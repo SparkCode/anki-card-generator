@@ -2,10 +2,10 @@
   "name": "anki-card-generator",
   "version": "0.1.0",
   "private": false,
-  "homepage": "https://sebeldin.github.io/anki-playground",
+  "homepage": "https://sparkcode.github.io/anki-card-generator",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sebeldin/anki-playground.git"
+    "url": "git+https://github.com/sparkcode/anki-card-generator.git"
   },
   "keywords": [
     "anki",
@@ -17,7 +17,7 @@
   "author": "sebeldin",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/sebeldin/anki-playground/issues"
+    "url": "https://github.com/sparkcode/anki-card-generator/issues"
   },
   "dependencies": {
     "@testing-library/dom": "^10.4.0",
