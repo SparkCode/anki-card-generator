@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/anki-playground/static/css/main.312f5b12.css",
-    "main.js": "/anki-playground/static/js/main.a9da3c24.js",
-    "static/js/453.6e207dfa.chunk.js": "/anki-playground/static/js/453.6e207dfa.chunk.js",
-    "index.html": "/anki-playground/index.html",
-    "main.312f5b12.css.map": "/anki-playground/static/css/main.312f5b12.css.map",
-    "main.a9da3c24.js.map": "/anki-playground/static/js/main.a9da3c24.js.map",
-    "453.6e207dfa.chunk.js.map": "/anki-playground/static/js/453.6e207dfa.chunk.js.map"
+    "main.css": "/anki-card-generator/static/css/main.312f5b12.css",
+    "main.js": "/anki-card-generator/static/js/main.a0908fa5.js",
+    "static/js/453.6e207dfa.chunk.js": "/anki-card-generator/static/js/453.6e207dfa.chunk.js",
+    "index.html": "/anki-card-generator/index.html",
+    "main.312f5b12.css.map": "/anki-card-generator/static/css/main.312f5b12.css.map",
+    "main.a0908fa5.js.map": "/anki-card-generator/static/js/main.a0908fa5.js.map",
+    "453.6e207dfa.chunk.js.map": "/anki-card-generator/static/js/453.6e207dfa.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.312f5b12.css",
-    "static/js/main.a9da3c24.js"
+    "static/js/main.a0908fa5.js"
   ]
 }
