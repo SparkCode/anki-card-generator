@@ -1,8 +1,24 @@
 {
   "name": "anki-card-generator",
   "version": "0.1.0",
-  "private": true,
-  "homepage": "https://sparkcode.github.io/anki-playground",
+  "private": false,
+  "homepage": "https://sebeldin.github.io/anki-playground",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sebeldin/anki-playground.git"
+  },
+  "keywords": [
+    "anki",
+    "flashcards",
+    "language-learning",
+    "openai",
+    "ai-assistant"
+  ],
+  "author": "sebeldin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sebeldin/anki-playground/issues"
+  },
   "dependencies": {
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",

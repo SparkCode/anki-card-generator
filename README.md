@@ -29,7 +29,7 @@ A web application that helps language learners generate high-quality Anki flashc
    - Configure AnkiConnect to allow connections (see [DIRECT-CONNECTION.md](DIRECT-CONNECTION.md))
    - Keep Anki running when using the application
 
-2. Visit the application at [https://username.github.io/anki-card-generator](https://username.github.io/anki-card-generator)
+2. Visit the application at [https://sebeldin.github.io/anki-playground](https://sebeldin.github.io/anki-playground)
 3. Enter your OpenRouter API key when prompted (stored only in your browser)
 4. Type an English word you want to learn
 5. Optionally add context about how you'd like to use the word
@@ -68,7 +68,7 @@ _**Comments**: Commonly used in travel (train, plane, ship) and storage contexts
 
 1. Clone the repository
    ```
-   git clone https://github.com/username/anki-card-generator.git
+   git clone https://github.com/sebeldin/anki-playground.git
    ```
 2. Install dependencies
    ```
