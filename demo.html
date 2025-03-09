@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anki Card Generator Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #4a6bff;
+            text-align: center;
+        }
+        .demo-section {
+            margin-bottom: 30px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f5f7ff;
+        }
+        .card-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #4a6bff;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #4a6bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .button:hover {
+            background-color: #3b56cc;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔤 Anki Card Generator Demo</h1>
+        
+        <div class="demo-section">
+            <h2>How It Works</h2>
+            <p>
+                This app helps you generate high-quality Anki flashcards for language learning using the Claude 3.7 Sonnet AI model 
+                through OpenRouter API. It's designed for intermediate to advanced English learners (B2-C1 level).
+            </p>
+        </div>
+        
+        <div class="demo-section">
+            <h2>Example Generation</h2>
+            <p>When you enter a word like "diligent", the app generates a complete Anki card:</p>
+            
+            <div class="card">
+                <div class="card-title">Front Card:</div>
+                <pre>She was **diligent** /ˈdɪlɪdʒənt/ in completing all her assignments on time.
+
+*adjective, formal, work, character trait*</pre>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">Back Card:</div>
+                <pre>She was % in completing all her assignments on time.
+
+**Definition**: Showing care and effort in your work or duties; hardworking and thorough.
+
+_**In Russian**: прилежный, усердный, старательный_
+
+_**Comments**: Describes someone who works carefully and persistently. A % person pays attention to detail and completes tasks thoroughly and on schedule._
+
+**Synonyms**: hardworking (emphasizes effort), meticulous (emphasizes attention to detail), conscientious (emphasizes moral responsibility)
+
+**Antonyms**: lazy, negligent, careless
+
+**Etymology**: From Latin "diligens" meaning "attentive, careful", from the verb "diligere" - "to value highly, take delight in"</pre>
+            </div>
+        </div>
+        
+        <div class="demo-section">
+            <h2>Key Features</h2>
+            <ul>
+                <li>Generate complete Anki cards with just a word and optional context</li>
+                <li>Cards include: example sentence, pronunciation, part of speech, definition, Russian translations, usage notes, synonyms/antonyms, and etymology</li>
+                <li>Save history of generated cards for future reference</li>
+                <li>Image prompt suggestions for visual reinforcement</li>
+                <li>Your API key is stored securely in your browser's local storage</li>
+            </ul>
+        </div>
+        
+        <div class="demo-section">
+            <h2>Try It Yourself</h2>
+            <p>
+                To try the Anki Card Generator, you need an OpenRouter API key.
+                Get one from <a href="https://openrouter.ai/keys" target="_blank">OpenRouter</a>.
+            </p>
+            <a href="index.html" class="button">Launch App</a>
+        </div>
+        
+        <div class="footer">
+            <p>Made with ❤️ for language learners</p>
+        </div>
+    </div>
+</body>
+</html>
