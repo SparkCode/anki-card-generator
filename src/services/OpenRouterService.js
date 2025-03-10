@@ -2,7 +2,7 @@ import { getApiKey } from '../utils/localStorage';
 
 // Constants
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_MODEL = 'openai/gpt-4o';
+const DEFAULT_MODEL = 'google/gemini-2.0-flash';
 
 /**
  * Get the prompt text for the Anki card generation

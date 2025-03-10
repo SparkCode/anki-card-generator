@@ -207,7 +207,7 @@ function App() {
             
             <div className="settings-section">
               <h3>About</h3>
-              <p>This app generates Anki flashcards using OpenRouter API to access Claude 3.7 Sonnet.</p>
+              <p>This app generates Anki flashcards using OpenRouter API to access Google Gemini 2.0 Flash.</p>
               <p>Your API key is stored only in your browser's local storage.</p>
             </div>
             
