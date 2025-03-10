@@ -14,7 +14,9 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [cardContent, setCardContent] = useState('');
-  const [currentWord, setCurrentWord] = useState(''); // eslint-disable-line no-unused-vars
+  const [currentWord, setCurrentWord] = useState(''); 
+  const [currentContext, setCurrentContext] = useState('');
+  const [currentDeck, setCurrentDeck] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [createCardModalOpen, setCreateCardModalOpen] = useState(false);
   const [cardCreationSuccess, setCardCreationSuccess] = useState(null);
@@ -82,6 +84,8 @@ function App() {
     setError('');
     setCardContent('');
     setCurrentWord(word);
+    setCurrentContext(context);
+    setCurrentDeck(selectedDeck);
     
     try {
       const result = await generateAnkiCard(word, context);
@@ -105,9 +109,38 @@ function App() {
       setIsLoading(false);
     }
   };
+  
+  const handleRegenerateCard = async () => {
+    if (!currentWord) return;
+    
+    setIsLoading(true);
+    setError('');
+    setCardContent('');
+    
+    try {
+      const result = await generateAnkiCard(currentWord, currentContext);
+      setCardContent(result.content);
+      
+      // Save to chat history
+      addChatHistoryEntry({
+        word: currentWord,
+        context: currentContext,
+        deck: currentDeck,
+        response: result.content,
+        usage: result.usage
+      });
+    } catch (err) {
+      setError(err.message || 'Failed to regenerate card');
+      console.error('Error regenerating card:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleHistoryItemClick = (item) => {
     setCurrentWord(item.word);
+    setCurrentContext(item.context || '');
+    setCurrentDeck(item.deck || '');
     setCardContent(item.response);
   };
 
@@ -139,7 +172,7 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>🔤 Anki Card Generator</h1>
+        <h1>📝 Anki Card Generator</h1>
         <button 
           className="settings-button"
           onClick={handleOpenSettings}
@@ -167,6 +200,7 @@ function App() {
             content={cardContent}
             isLoading={isLoading}
             onOpenInAnkiUI={openAnkiCardUI}
+            onRegenerate={handleRegenerateCard}
           />
           
           {cardCreationSuccess && (

@@ -9,8 +9,9 @@ import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
  * @param {string} props.content - The raw content from the AI
  * @param {boolean} props.isLoading - Whether content is still loading
  * @param {Function} props.onOpenInAnkiUI - Function called when the card is clicked to open in Anki UI
+ * @param {Function} props.onRegenerate - Function called when regenerate button is clicked
  */
-const CardDisplay = ({ content, isLoading, onOpenInAnkiUI }) => {
+const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate }) => {
   // Define extractCardParts function
   const extractCardParts = (fullContent) => {
     if (!fullContent) return { front: null, back: null };
@@ -207,6 +208,16 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI }) => {
         >
           Copy to Clipboard
         </button>
+        
+        {content && onRegenerate && (
+          <button 
+            className="button secondary" 
+            onClick={onRegenerate}
+            disabled={isLoading}
+          >
+            Regenerate
+          </button>
+        )}
         
         {content && (
           <button 
