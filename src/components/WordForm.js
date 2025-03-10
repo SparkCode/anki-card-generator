@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import DeckSelector from './DeckSelector';
+import { getLocalStorageItem, setLocalStorageItem } from '../utils/localStorage';
 
 /**
  * Form for entering a word and context to generate an Anki card
@@ -10,6 +12,14 @@ const WordForm = ({ onSubmit, isLoading }) => {
   const [word, setWord] = useState('');
   const [context, setContext] = useState('');
   const [error, setError] = useState('');
+  const [selectedDeck, setSelectedDeck] = useState(
+    getLocalStorageItem('lastSelectedDeck') || ''
+  );
+
+  const handleDeckSelect = (deck) => {
+    setSelectedDeck(deck);
+    setLocalStorageItem('lastSelectedDeck', deck);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -18,9 +28,14 @@ const WordForm = ({ onSubmit, isLoading }) => {
       setError('Please enter a word');
       return;
     }
+
+    if (!selectedDeck) {
+      setError('Please select a deck');
+      return;
+    }
     
     setError('');
-    onSubmit(word.trim(), context.trim());
+    onSubmit(word.trim(), context.trim(), selectedDeck);
   };
 
   return (
@@ -48,6 +63,14 @@ const WordForm = ({ onSubmit, isLoading }) => {
             onChange={(e) => setContext(e.target.value)}
             placeholder="e.g., work ethics, public speaking, time management"
             className="form-control"
+            disabled={isLoading}
+          />
+        </div>
+
+        <div className="form-group">
+          <DeckSelector
+            selectedDeck={selectedDeck}
+            onDeckSelect={handleDeckSelect}
             disabled={isLoading}
           />
         </div>

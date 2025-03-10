@@ -70,7 +70,10 @@ const ChatHistory = ({ onHistoryItemClick }) => {
             onClick={() => onHistoryItemClick(item)}
           >
             <div className="history-item-word">{item.word}</div>
-            <div className="history-item-date">{formatDate(item.timestamp)}</div>
+            <div className="history-item-meta">
+              {item.deck && <span className="history-item-deck">{item.deck}</span>}
+              <span className="history-item-date">{formatDate(item.timestamp)}</span>
+            </div>
             <button 
               className="history-item-delete"
               onClick={(e) => handleDeleteHistoryItem(e, item.id)}

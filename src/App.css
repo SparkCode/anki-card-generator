@@ -416,10 +416,25 @@ body {
   flex-grow: 1;
 }
 
+.history-item-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-right: 10px;
+}
+
+.history-item-deck {
+  font-size: 0.8rem;
+  color: var(--primary-color);
+  background-color: rgba(74, 107, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-bottom: 2px;
+}
+
 .history-item-date {
   font-size: 0.8rem;
   color: #777;
-  margin-right: 10px;
 }
 
 .history-item-delete {

@@ -77,7 +77,7 @@ function App() {
     setApiKeyModalOpen(true);
   };
 
-  const handleFormSubmit = async (word, context) => {
+  const handleFormSubmit = async (word, context, selectedDeck) => {
     setIsLoading(true);
     setError('');
     setCardContent('');
@@ -91,9 +91,13 @@ function App() {
       addChatHistoryEntry({
         word,
         context,
+        deck: selectedDeck,
         response: result.content,
         usage: result.usage
       });
+      
+      // Store the selected deck for future use
+      setLocalStorageItem('lastSelectedDeck', selectedDeck);
     } catch (err) {
       setError(err.message || 'Failed to generate card');
       console.error('Error:', err);
