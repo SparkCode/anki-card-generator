@@ -2,7 +2,7 @@ import { getApiKey } from '../utils/localStorage';
 
 // Constants
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_MODEL = 'anthropic/claude-3-7-sonnet';
+const DEFAULT_MODEL = 'openai/gpt-4o';
 
 /**
  * Get the prompt text for the Anki card generation
