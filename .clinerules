@@ -1,0 +1,63 @@
+# Anki Card Generator - Project Rules and Patterns
+
+## Project Intelligence
+
+### Project Structure
+- React application following Create React App structure
+- Component-based architecture with clear separation of concerns
+- Service layer for API interactions
+- Utility functions for common operations
+
+### File Naming Conventions
+- Component files use PascalCase (e.g., `WordForm.js`, `CardDisplay.js`)
+- Service files use PascalCase with "Service" suffix (e.g., `AnkiService.js`)
+- Documentation uses all caps (e.g., `CORS-FIX.md`)
+
+### Code Patterns
+- React functional components with hooks (based on modern React patterns)
+- Service pattern for API communication
+- Local storage for persistence
+
+### Integration Points
+- Anki connection via AnkiConnect API (likely requires Anki desktop running)
+- OpenRouter for AI services
+- Local storage for settings persistence
+
+### Special Considerations
+- CORS handling appears to be a significant concern (multiple docs reference this)
+- API key security for OpenRouter integration
+- Anki connection stability and error handling
+
+## User Preferences
+
+### Known User Preferences
+- To be discovered through interaction
+
+### Work Approach
+- To be discovered through interaction
+
+## Critical Paths
+
+### Core Functionality
+1. API key configuration (OpenRouter)
+2. Anki connection establishment
+3. Word/phrase input
+4. Card generation via AI
+5. Card review and editing
+6. Card submission to Anki
+
+### Potential Pain Points
+- Anki connection issues (CORS, availability)
+- API key management
+- AI generation quality and consistency
+
+## Questions to Ask User
+- Preferred connection method for Anki (direct vs proxy)
+- AI model preferences for card generation
+- Language learning focus (single language vs multiple)
+- Card template customization needs
+- Common issues experienced with the current implementation
+
+## Improvement Areas
+- To be identified after code review
+- Potential focus on error handling, UX improvements, and connection reliability
