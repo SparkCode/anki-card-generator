@@ -24,7 +24,6 @@ do sentence moderate short like 10 words or so and with most popular usage with 
 
 in bold in top/bottom only show the word or set expression with the word
 
-
 Feel like a kind 24 yo teacher in university but informal so it feels warm
 
 So your goal is come up with anki card with word that given
@@ -63,25 +62,19 @@ in caps show only word and significant parts
 ==front part==
 She placed her bag in the overhead **compartment** /kəmˈpɑːrtmənt/ before taking her seat.
 
-
 *noun, general, travel, storage*
 ==front part==
 
 ==bottom part==
 She placed her bag in the overhead % before taking her seat.
 
-
 **Definition**: A separate section or enclosed space within a larger container or structure, used for storing or organizing things.
-
 
 _**In Russian**: отсек, отделение, купе_
 
-
 _**Comments**: Commonly used in travel (train, plane, ship) and storage contexts. In aviation, "overhead %" refers to the space above seats for carry-on luggage. In trains, it can mean a private section for passengers._
 
-
 **Synonyms**: section (broader, less specific), storage area (descriptive), cabin (when referring to a sleeping space in a train)
-
 
 **Antonyms**: open space, hallway
 ==bottom part==
