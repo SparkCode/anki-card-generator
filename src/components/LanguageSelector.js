@@ -41,12 +41,12 @@ const LanguageSelector = ({ selectedLanguage, onLanguageSelect, disabled, showLa
         onChange={handleChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        placeholder="Enter your native language (e.g., Russian, French)"
+        placeholder="Enter your native language"
         className="form-control"
         disabled={disabled}
       />
       <small className="form-help-text">
-        Enter the language you want translations in (e.g., Russian, German, Spanish)
+        Enter the language you want translations in
       </small>
     </div>
   );

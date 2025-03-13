@@ -5,6 +5,7 @@ import CardDisplay from './components/CardDisplay';
 import ChatHistory from './components/ChatHistory';
 import CreateCardModal from './components/CreateCardModal';
 import LanguageSelector from './components/LanguageSelector';
+import EnglishLevelSelector from './components/EnglishLevelSelector';
 import { generateAnkiCard } from './services/OpenRouterService';
 import { guiAddCards, getDecks } from './services/AnkiService';
 import { hasApiKey, addChatHistoryEntry, getApiKey, setLocalStorageItem, getLocalStorageItem } from './utils/localStorage';
@@ -23,6 +24,9 @@ function App() {
   const [cardCreationSuccess, setCardCreationSuccess] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState(
     getLocalStorageItem('userNativeLanguage') || 'Russian'
+  );
+  const [selectedEnglishLevel, setSelectedEnglishLevel] = useState(
+    getLocalStorageItem('userEnglishLevel') || 'B2 preferably (maybe C1)'
   );
   
   // Function to directly open Anki UI with card content
@@ -88,6 +92,11 @@ function App() {
     setLocalStorageItem('userNativeLanguage', language);
   };
 
+  const handleEnglishLevelSelect = (level) => {
+    setSelectedEnglishLevel(level);
+    setLocalStorageItem('userEnglishLevel', level);
+  };
+
   const handleFormSubmit = async (word, context, selectedDeck) => {
     setIsLoading(true);
     setError('');
@@ -97,7 +106,7 @@ function App() {
     setCurrentDeck(selectedDeck);
     
     try {
-      const result = await generateAnkiCard(word, context, selectedLanguage);
+      const result = await generateAnkiCard(word, context, selectedLanguage, selectedEnglishLevel);
       setCardContent(result.content);
       
       // Save to chat history
@@ -106,6 +115,7 @@ function App() {
         context,
         deck: selectedDeck,
         nativeLanguage: selectedLanguage,
+        englishLevel: selectedEnglishLevel,
         response: result.content,
         usage: result.usage
       });
@@ -128,7 +138,7 @@ function App() {
     setCardContent('');
     
     try {
-      const result = await generateAnkiCard(currentWord, currentContext, selectedLanguage);
+      const result = await generateAnkiCard(currentWord, currentContext, selectedLanguage, selectedEnglishLevel);
       setCardContent(result.content);
       
       // Save to chat history
@@ -137,6 +147,7 @@ function App() {
         context: currentContext,
         deck: currentDeck,
         nativeLanguage: selectedLanguage,
+        englishLevel: selectedEnglishLevel,
         response: result.content,
         usage: result.usage
       });
@@ -153,6 +164,12 @@ function App() {
     setCurrentContext(item.context || '');
     setCurrentDeck(item.deck || '');
     setCardContent(item.response);
+    
+    // If englishLevel is available in history item, set it
+    if (item.englishLevel) {
+      setSelectedEnglishLevel(item.englishLevel);
+      setLocalStorageItem('userEnglishLevel', item.englishLevel);
+    }
   };
 
   const handleCardCreationSuccess = (noteId, deckName) => {
@@ -260,6 +277,16 @@ function App() {
               <LanguageSelector
                 selectedLanguage={selectedLanguage}
                 onLanguageSelect={handleLanguageSelect}
+                showLabel={false}
+              />
+            </div>
+            
+            <div className="settings-section">
+              <h3>English Level</h3>
+              <p>Specify your English proficiency level:</p>
+              <EnglishLevelSelector
+                selectedLevel={selectedEnglishLevel}
+                onLevelSelect={handleEnglishLevelSelect}
                 showLabel={false}
               />
             </div>
