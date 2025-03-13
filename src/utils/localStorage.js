@@ -30,8 +30,15 @@ export const getLocalStorageItem = (key, parse = true) => {
  * @param {any} value - The value to store
  */
 export const setLocalStorageItem = (key, value) => {
-  const valueToStore = typeof value === 'object' ? JSON.stringify(value) : value;
-  localStorage.setItem(key, valueToStore);
+  const valueToStore = typeof value === 'object' && value !== null ? JSON.stringify(value) : value;
+  
+  // Some local storage keys need to be consistent - always store as JSON for these
+  const alwaysJsonKeys = ['lastSelectedDeck', 'userNativeLanguage', 'userEnglishLevel'];
+  if (alwaysJsonKeys.includes(key) && typeof value !== 'object') {
+    localStorage.setItem(key, JSON.stringify(value));
+  } else {
+    localStorage.setItem(key, valueToStore);
+  }
 };
 
 /**

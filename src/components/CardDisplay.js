@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { getLocalStorageItem } from '../utils/localStorage';
 
 /**
  * Component to display the generated Anki card with front and back views
@@ -34,6 +35,17 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate }) => {
   const [backText, setBackText] = useState('');
   const [frontEditing, setFrontEditing] = useState(false);
   const [backEditing, setBackEditing] = useState(false);
+  const [currentWord, setCurrentWord] = useState('');
+
+  // Extract the bold word from front text to look up pronunciation
+  useEffect(() => {
+    if (frontText) {
+      const boldWordMatch = frontText.match(/\*\*([^*]+)\*\*/);
+      if (boldWordMatch) {
+        setCurrentWord(boldWordMatch[1].trim());
+      }
+    }
+  }, [frontText]);
   
   // Update text states when content changes
   useEffect(() => {
@@ -198,6 +210,11 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate }) => {
           </div>
         )}
       </div>
+
+      {/* Pronunciation Preview */}
+      {currentWord && (
+        <PronunciationPreview word={currentWord} />
+      )}
       
       <div className="card-actions">
         <button 
@@ -266,6 +283,108 @@ const AutosizeTextarea = ({ value, onChange, placeholder }) => {
         lineHeight: '1.5'
       }}
     />
+  );
+};
+
+// Component to display pronunciation information
+const PronunciationPreview = ({ word }) => {
+  const [pronunciationInfo, setPronunciationInfo] = useState(null);
+  const [audioPlaying, setAudioPlaying] = useState(null);
+
+  useEffect(() => {
+    // Look up stored pronunciation info for this word
+    if (word) {
+      const storedDictData = getLocalStorageItem(`dictData_${word.toLowerCase()}`);
+      if (storedDictData?.pronunciationInfo) {
+        setPronunciationInfo(storedDictData.pronunciationInfo);
+      } else {
+        setPronunciationInfo(null);
+      }
+    }
+  }, [word]);
+
+  const playAudio = (url, type) => {
+    if (!url) return;
+    
+    setAudioPlaying(type);
+    
+    const audio = new Audio(url);
+    audio.onended = () => setAudioPlaying(null);
+    audio.onerror = () => {
+      console.error('Error playing audio');
+      setAudioPlaying(null);
+    };
+    
+    audio.play().catch(err => {
+      console.error('Failed to play audio:', err);
+      setAudioPlaying(null);
+    });
+  };
+
+  if (!pronunciationInfo || (!pronunciationInfo.usAudioUrl && !pronunciationInfo.ukAudioUrl)) {
+    return null;
+  }
+
+  return (
+    <div className="pronunciation-preview" style={{ 
+      margin: '10px 0', 
+      padding: '10px', 
+      backgroundColor: '#f5f5f5', 
+      borderRadius: '4px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '8px' 
+    }}>
+      <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>Pronunciation for "{word}":</div>
+      
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
+        {pronunciationInfo.usAudioUrl && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button 
+              onClick={() => playAudio(pronunciationInfo.usAudioUrl, 'us')}
+              disabled={audioPlaying !== null}
+              style={{
+                padding: '4px 8px',
+                backgroundColor: audioPlaying === 'us' ? '#ccc' : '#e0e0e0',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              🇺🇸 {audioPlaying === 'us' ? 'Playing...' : 'Play'}
+            </button>
+            {pronunciationInfo.usPronunciation && (
+              <span>{pronunciationInfo.usPronunciation}</span>
+            )}
+          </div>
+        )}
+        
+        {pronunciationInfo.ukAudioUrl && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button 
+              onClick={() => playAudio(pronunciationInfo.ukAudioUrl, 'uk')}
+              disabled={audioPlaying !== null}
+              style={{
+                padding: '4px 8px',
+                backgroundColor: audioPlaying === 'uk' ? '#ccc' : '#e0e0e0',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              🇬🇧 {audioPlaying === 'uk' ? 'Playing...' : 'Play'}
+            </button>
+            {pronunciationInfo.ukPronunciation && (
+              <span>{pronunciationInfo.ukPronunciation}</span>
+            )}
+          </div>
+        )}
+      </div>
+      
+      <div style={{ fontSize: '0.8em', color: '#666', marginTop: '5px' }}>
+        This audio will be added to your Anki card automatically
+      </div>
+    </div>
   );
 };
 

@@ -10,8 +10,9 @@ import { getLocalStorageItem, setLocalStorageItem } from '../utils/localStorage'
  * @param {Function} props.onClose - Function called when the modal is closed
  * @param {string} props.cardContent - The content of the card to create
  * @param {Function} props.onSuccess - Function called when a card is successfully created
+ * @param {string} props.word - The word for which the card is being created
  */
-const CreateCardModal = ({ isOpen, onClose, cardContent, onSuccess }) => {
+const CreateCardModal = ({ isOpen, onClose, cardContent, onSuccess, word }) => {
   const [selectedDeck, setSelectedDeck] = useState(
     getLocalStorageItem('lastSelectedDeck') || ''
   );
@@ -66,7 +67,16 @@ const CreateCardModal = ({ isOpen, onClose, cardContent, onSuccess }) => {
         return;
       }
       
-      const noteId = await addNote(selectedDeck, cardContent, allowDuplicates);
+      // Get pronunciation info if available
+      let pronunciationInfo = null;
+      if (word) {
+        const storedDictData = getLocalStorageItem(`dictData_${word}`);
+        if (storedDictData?.pronunciationInfo) {
+          pronunciationInfo = storedDictData.pronunciationInfo;
+        }
+      }
+      
+      const noteId = await addNote(selectedDeck, cardContent, allowDuplicates, pronunciationInfo);
       
       if (onSuccess) {
         onSuccess(noteId, selectedDeck);
@@ -99,7 +109,16 @@ const CreateCardModal = ({ isOpen, onClose, cardContent, onSuccess }) => {
         return;
       }
       
-      await guiAddCards(selectedDeck, cardContent, allowDuplicates);
+      // Get pronunciation info if available
+      let pronunciationInfo = null;
+      if (word) {
+        const storedDictData = getLocalStorageItem(`dictData_${word}`);
+        if (storedDictData?.pronunciationInfo) {
+          pronunciationInfo = storedDictData.pronunciationInfo;
+        }
+      }
+      
+      await guiAddCards(selectedDeck, cardContent, allowDuplicates, pronunciationInfo);
       
       // Closing the modal since Anki UI is now open
       onClose();
@@ -158,6 +177,17 @@ const CreateCardModal = ({ isOpen, onClose, cardContent, onSuccess }) => {
               <p style={{ margin: '0 0 4px 0' }}><strong>Note:</strong> Markdown formatting will be converted to HTML for Anki.</p>
               <p style={{ margin: '0' }}>Headings, lists, code blocks, and other formatting will be preserved in your Anki cards.</p>
             </div>
+            
+            {word && (
+              <div className="dictionary-info" style={{ margin: '10px 0', fontSize: '0.9rem', backgroundColor: '#f0fff0', padding: '8px', borderRadius: '4px' }}>
+                <p style={{ margin: '0 0 4px 0', fontWeight: 'bold' }}>Pronunciation Audio</p>
+                {getLocalStorageItem(`dictData_${word}`)?.pronunciationInfo ? (
+                  <p style={{ margin: '0' }}>✅ Audio pronunciation will be added to your Anki card automatically</p>
+                ) : (
+                  <p style={{ margin: '0' }}>⚠️ No pronunciation data available for "{word}"</p>
+                )}
+              </div>
+            )}
             
             {error && <div className="error-message">{error}</div>}
             

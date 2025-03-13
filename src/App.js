@@ -8,6 +8,7 @@ import LanguageSelector from './components/LanguageSelector';
 import EnglishLevelSelector from './components/EnglishLevelSelector';
 import { generateAnkiCard } from './services/OpenRouterService';
 import { guiAddCards, getDecks } from './services/AnkiService';
+import { fetchWordInfo, extractPronunciationInfo } from './services/DictionaryService'; 
 import { hasApiKey, addChatHistoryEntry, getApiKey, setLocalStorageItem, getLocalStorageItem } from './utils/localStorage';
 import './App.css';
 
@@ -35,18 +36,27 @@ function App() {
       // Get the default deck from localStorage or use a default one
       const defaultDeck = getLocalStorageItem('lastSelectedDeck');
       
+      // Try to get stored pronunciation info for the current word
+      let pronunciationInfo = null;
+      if (currentWord) {
+        const storedDictData = getLocalStorageItem(`dictData_${currentWord}`);
+        if (storedDictData?.pronunciationInfo) {
+          pronunciationInfo = storedDictData.pronunciationInfo;
+        }
+      }
+      
       if (!defaultDeck) {
         // If no default deck is set, try to get available decks and use the first one
         const decks = await getDecks();
         if (decks && decks.length > 0) {
-          await guiAddCards(decks[0], content);
+          await guiAddCards(decks[0], content, false, pronunciationInfo);
         } else {
           console.error('No decks available in Anki');
           alert('No decks available in Anki. Please create a deck first.');
         }
       } else {
         // Use the default deck
-        await guiAddCards(defaultDeck, content);
+        await guiAddCards(defaultDeck, content, false, pronunciationInfo);
       }
     } catch (err) {
       console.error('Error opening Anki UI:', err);
@@ -106,10 +116,29 @@ function App() {
     setCurrentDeck(selectedDeck);
     
     try {
-      const result = await generateAnkiCard(word, context, selectedLanguage, selectedEnglishLevel);
+      // First, try to fetch dictionary data for the word
+      let pronunciationInfo = null;
+      try {
+        const dictionaryData = await fetchWordInfo(word);
+        pronunciationInfo = extractPronunciationInfo(dictionaryData);
+        
+        // Store the dictionary data in localStorage for later use
+        setLocalStorageItem(`dictData_${word}`, {
+          data: dictionaryData,
+          pronunciationInfo,
+          timestamp: Date.now()
+        });
+      } catch (dictError) {
+        // If dictionary lookup fails, just log it and continue without pronunciation info
+        console.warn('Dictionary lookup failed:', dictError);
+        // Don't throw the error as we still want to generate the card
+      }
+      
+      // Then generate the card with the pronunciation info if available
+      const result = await generateAnkiCard(word, context, selectedLanguage, selectedEnglishLevel, pronunciationInfo);
       setCardContent(result.content);
       
-      // Save to chat history
+      // Save to chat history with the pronunciation info
       addChatHistoryEntry({
         word,
         context,
@@ -117,6 +146,7 @@ function App() {
         nativeLanguage: selectedLanguage,
         englishLevel: selectedEnglishLevel,
         response: result.content,
+        pronunciationInfo, // Add pronunciation info to history
         usage: result.usage
       });
       
@@ -138,10 +168,35 @@ function App() {
     setCardContent('');
     
     try {
-      const result = await generateAnkiCard(currentWord, currentContext, selectedLanguage, selectedEnglishLevel);
+      // First, check if we already have dictionary data for this word
+      let pronunciationInfo = null;
+      const storedDictData = getLocalStorageItem(`dictData_${currentWord}`);
+      
+      if (storedDictData?.pronunciationInfo) {
+        pronunciationInfo = storedDictData.pronunciationInfo;
+      } else {
+        // If not, try to fetch it
+        try {
+          const dictionaryData = await fetchWordInfo(currentWord);
+          pronunciationInfo = extractPronunciationInfo(dictionaryData);
+          
+          // Store for future use
+          setLocalStorageItem(`dictData_${currentWord}`, {
+            data: dictionaryData,
+            pronunciationInfo,
+            timestamp: Date.now()
+          });
+        } catch (dictError) {
+          console.warn('Dictionary lookup failed during regeneration:', dictError);
+          // Continue without pronunciation info
+        }
+      }
+      
+      // Generate the card with pronunciation info if available
+      const result = await generateAnkiCard(currentWord, currentContext, selectedLanguage, selectedEnglishLevel, pronunciationInfo);
       setCardContent(result.content);
       
-      // Save to chat history
+      // Save to chat history with pronunciation info
       addChatHistoryEntry({
         word: currentWord,
         context: currentContext,
@@ -149,6 +204,7 @@ function App() {
         nativeLanguage: selectedLanguage,
         englishLevel: selectedEnglishLevel,
         response: result.content,
+        pronunciationInfo,
         usage: result.usage
       });
     } catch (err) {
@@ -253,6 +309,7 @@ function App() {
         onClose={() => setCreateCardModalOpen(false)}
         cardContent={cardContent}
         onSuccess={handleCardCreationSuccess}
+        word={currentWord}
       />
 
       {showSettings && (

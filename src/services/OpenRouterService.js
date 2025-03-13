@@ -10,9 +10,10 @@ const DEFAULT_MODEL = 'google/gemini-2.0-flash-001';
  * @param {string} context - Optional context for the word
  * @param {string} nativeLanguage - User's native language (e.g., 'Russian', 'French', 'German')
  * @param {string} englishLevel - User's English level (e.g., 'B2', 'C1')
+ * @param {Object} pronunciationInfo - Optional pronunciation information from the dictionary
  * @returns {string} - The formatted prompt
  */
-const getPromptText = (word, context = '', nativeLanguage = 'Russian', englishLevel = 'B2 preferably (maybe C1)') => {
+const getPromptText = (word, context = '', nativeLanguage = 'Russian', englishLevel = 'B2 preferably (maybe C1)', pronunciationInfo = null) => {
   const contextPart = context ? `\nContext for this word: ${context}` : '';
   // Use the language directly, default to Russian if empty
   const languageName = nativeLanguage && nativeLanguage.trim() ? nativeLanguage.trim() : 'Russian';
@@ -21,6 +22,10 @@ const getPromptText = (word, context = '', nativeLanguage = 'Russian', englishLe
 
   return `
   i'm learning english with program Anki for memory words
+
+Include the following pronunciation: ${pronunciationInfo && (pronunciationInfo.usPronunciation || pronunciationInfo.ukPronunciation) ? 
+  `US ${pronunciationInfo.usPronunciation || ''} UK ${pronunciationInfo.ukPronunciation || ''}` : 
+  'Add appropriate pronunciation'}
 
 i have ${level} level of english, so try to use vocabulary from ${level}  
 
@@ -115,16 +120,17 @@ Here's the word I want to learn:${word}${contextPart}`;
  * @param {string} context - Optional context for the word
  * @param {string} nativeLanguage - User's native language (defaults to 'Russian')
  * @param {string} englishLevel - User's English level (defaults to 'B2 preferably (maybe C1)')
+ * @param {Object} pronunciationInfo - Optional pronunciation information
  * @returns {Promise} - The API response
  */
-export const generateAnkiCard = async (word, context = '', nativeLanguage = 'Russian', englishLevel = 'B2 preferably (maybe C1)') => {
+export const generateAnkiCard = async (word, context = '', nativeLanguage = 'Russian', englishLevel = 'B2 preferably (maybe C1)', pronunciationInfo = null) => {
   const apiKey = getApiKey();
   
   if (!apiKey) {
     throw new Error('API key not found. Please set your OpenRouter API key.');
   }
   
-  const promptContent = getPromptText(word, context, nativeLanguage, englishLevel);
+  const promptContent = getPromptText(word, context, nativeLanguage, englishLevel, pronunciationInfo);
   
   const payload = {
     model: DEFAULT_MODEL,

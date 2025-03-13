@@ -10,6 +10,9 @@ marked.setOptions({
   headerIds: false
 });
 
+// For audio file handling
+const AUDIO_FETCH_TIMEOUT = 10000; // 10 seconds timeout for audio downloads
+
 // Constants
 const API_URL = 'http://127.0.0.1:8765'; // Direct AnkiConnect URL
 const API_VERSION = 6;
@@ -190,17 +193,76 @@ export const parseCardContent = (content, convertToHtml = true) => {
 };
 
 /**
+ * Store media file directly from URL
+ * @param {string} url - URL of the file to download
+ * @param {string} filename - Filename to save as
+ * @returns {Promise<string>} - The filename used in Anki
+ */
+export const storeMediaFileFromUrl = async (url, filename) => {
+  try {
+    console.log(`Storing media file from URL: ${url} as ${filename}`);
+    // Use Anki's storeMediaFile API with url parameter
+    const result = await invokeAnkiConnect('storeMediaFile', {
+      filename,
+      url
+    });
+    
+    return result || filename;
+  } catch (error) {
+    console.error(`Error storing media file from URL ${url}:`, error);
+    throw error;
+  }
+};
+
+/**
  * Add a note to Anki
  * @param {string} deckName - The name of the deck to add the note to
  * @param {string} content - The AI-generated card content
  * @param {boolean} allowDuplicate - Whether to allow duplicate cards
+ * @param {Object} pronunciationInfo - Optional pronunciation information from dictionary
  * @returns {Promise<number>} - The ID of the created note
  */
-export const addNote = async (deckName, content, allowDuplicate = false) => {
-  const { front, back } = parseCardContent(content, true); // Convert to HTML
+export const addNote = async (deckName, content, allowDuplicate = false, pronunciationInfo = null) => {
+  let { front, back } = parseCardContent(content, true); // Convert to HTML
   
   if (!front || !back) {
     throw new Error('Failed to parse card content. Make sure the content contains both front and back parts.');
+  }
+  
+  // Process pronunciation info if available
+  if (pronunciationInfo) {
+    const { usAudioUrl, ukAudioUrl, usPronunciation, ukPronunciation, word } = pronunciationInfo;
+    
+    // Create safe filenames based on the word
+    const safeWord = word ? word.replace(/\s+/g, '_').toLowerCase().replace(/[^\w-]/g, '') : 'word';
+    let audioHtml = '';
+    
+    try {
+      // Store US pronunciation
+      if (usAudioUrl) {
+        const usAudioFilename = `${safeWord}_us.mp3`;
+        // Have Anki download the file directly from the URL
+        await storeMediaFileFromUrl(usAudioUrl, usAudioFilename);
+        audioHtml += `🇺🇸 ${usPronunciation || ''} [sound:${usAudioFilename}] `;
+      }
+      
+      // Store UK pronunciation
+      if (ukAudioUrl) {
+        const ukAudioFilename = `${safeWord}_uk.mp3`;
+        // Have Anki download the file directly from the URL
+        await storeMediaFileFromUrl(ukAudioUrl, ukAudioFilename);
+        audioHtml += `🇬🇧 ${ukPronunciation || ''} [sound:${ukAudioFilename}] `;
+      }
+      
+      // Add a line break before the audio references
+      if (audioHtml) {
+        audioHtml = '<br/><br/>' + audioHtml;
+        front = front + audioHtml; // Audio at the end of the card
+      }
+    } catch (error) {
+      console.error('Error storing audio files:', error);
+      // Continue without audio if storing fails
+    }
   }
   
   const note = {
@@ -232,13 +294,50 @@ export const addNote = async (deckName, content, allowDuplicate = false) => {
  * @param {string} deckName - The name of the deck
  * @param {string} content - The AI-generated card content
  * @param {boolean} allowDuplicate - Whether to allow duplicate cards
+ * @param {Object} pronunciationInfo - Optional pronunciation information from dictionary
  * @returns {Promise<number>} - The ID of the note that would be created
  */
-export const guiAddCards = async (deckName, content, allowDuplicate = false) => {
-  const { front, back } = parseCardContent(content, true); // Convert to HTML
+export const guiAddCards = async (deckName, content, allowDuplicate = false, pronunciationInfo = null) => {
+  let { front, back } = parseCardContent(content, true); // Convert to HTML
   
   if (!front || !back) {
     throw new Error('Failed to parse card content. Make sure the content contains both front and back parts.');
+  }
+  
+  // Process pronunciation info if available
+  if (pronunciationInfo) {
+    const { usAudioUrl, ukAudioUrl, usPronunciation, ukPronunciation, word } = pronunciationInfo;
+    
+    // Create safe filenames based on the word
+    const safeWord = word ? word.replace(/\s+/g, '_').toLowerCase().replace(/[^\w-]/g, '') : 'word';
+    let audioHtml = '';
+    
+    try {
+      // Store US pronunciation
+      if (usAudioUrl) {
+        const usAudioFilename = `${safeWord}_us.mp3`;
+        // Have Anki download the file directly from the URL
+        await storeMediaFileFromUrl(usAudioUrl, usAudioFilename);
+        audioHtml += `🇺🇸 ${usPronunciation || ''} [sound:${usAudioFilename}] `;
+      }
+      
+      // Store UK pronunciation
+      if (ukAudioUrl) {
+        const ukAudioFilename = `${safeWord}_uk.mp3`;
+        // Have Anki download the file directly from the URL
+        await storeMediaFileFromUrl(ukAudioUrl, ukAudioFilename);
+        audioHtml += `🇬🇧 ${ukPronunciation || ''} [sound:${ukAudioFilename}] `;
+      }
+      
+      // Add a line break before the audio references
+      if (audioHtml) {
+        audioHtml = '<br/><br/>' + audioHtml;
+        front = front + audioHtml; // Audio at the end of the card
+      }
+    } catch (error) {
+      console.error('Error storing audio files:', error);
+      // Continue without audio if storing fails
+    }
   }
   
   const note = {
@@ -265,4 +364,159 @@ export const guiAddCards = async (deckName, content, allowDuplicate = false) => 
 export const getNoteInfo = async (noteId) => {
   const result = await invokeAnkiConnect('notesInfo', { notes: [noteId] });
   return result[0];
+};
+
+/**
+ * Fetches the audio file from the URL and returns it as a base64 string
+ * @param {string} audioUrl - URL of the audio file
+ * @returns {Promise<string>} - Base64 encoded audio data
+ */
+export const fetchAudioAsBase64 = async (audioUrl) => {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), AUDIO_FETCH_TIMEOUT);
+    
+    // First try direct access - this may work if no CORS restrictions
+    let response;
+    let errorMessage = '';
+    
+    try {
+      response = await fetch(audioUrl, { 
+        signal: controller.signal,
+        mode: 'cors'
+      });
+    } catch (directError) {
+      console.log('Direct fetch failed, trying CORS proxy:', directError);
+      errorMessage = directError.message;
+      
+      // If direct access fails, try multiple CORS proxies
+      const proxyUrls = [
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(audioUrl)}`,
+        `https://cors-anywhere.herokuapp.com/${audioUrl}`,
+        `https://corsproxy.io/?${encodeURIComponent(audioUrl)}`
+      ];
+      
+      // Try each proxy until one works
+      for (const proxyUrl of proxyUrls) {
+        try {
+          response = await fetch(proxyUrl, { 
+            signal: controller.signal,
+            headers: {
+              'Origin': window.location.origin,
+            }
+          });
+          
+          if (response.ok) {
+            console.log('Successfully fetched audio with proxy:', proxyUrl);
+            break; // Found a working proxy
+          }
+        } catch (proxyError) {
+          console.log(`Proxy ${proxyUrl} failed:`, proxyError);
+          errorMessage += ` | Proxy error: ${proxyError.message}`;
+        }
+      }
+    }
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch audio: ${response.status} ${response.statusText}`);
+    }
+    
+    const audioBlob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        // Get the base64 string (remove the data URL prefix)
+        const base64Data = reader.result.split(',')[1];
+        resolve(base64Data);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(audioBlob);
+    });
+  } catch (error) {
+    console.error('Error fetching audio:', error);
+    throw error;
+  }
+};
+
+/**
+ * Stores an audio file in Anki's media collection
+ * @param {string} filename - Desired filename for the audio file
+ * @param {string} base64Data - Base64 encoded audio data
+ * @returns {Promise<string>} - The filename used in Anki
+ */
+export const storeAudioFile = async (filename, base64Data) => {
+  try {
+    await invokeAnkiConnect('storeMediaFile', {
+      filename,
+      data: base64Data
+    });
+    
+    return filename;
+  } catch (error) {
+    console.error('Error storing audio in Anki:', error);
+    throw error;
+  }
+};
+
+/**
+ * Downloads and stores an audio file in Anki's media collection
+ * @param {string} audioUrl - URL of the audio file
+ * @param {string} preferredFilename - Preferred filename for the stored audio
+ * @returns {Promise<string|null>} - Filename of the stored audio, or null if failed
+ */
+export const downloadAndStoreAudio = async (audioUrl, preferredFilename) => {
+  if (!audioUrl) return null;
+  
+  // Generate safe filename from URL if none provided
+  const filename = preferredFilename || 
+    `audio_${Date.now()}_${Math.floor(Math.random() * 1000)}.mp3`;
+  
+  // Try primary URL first
+  try {
+    // Fetch the audio as base64
+    const base64Data = await fetchAudioAsBase64(audioUrl);
+    
+    // Store in Anki
+    return await storeAudioFile(filename, base64Data);
+  } catch (primaryError) {
+    console.error('Primary audio URL failed:', primaryError);    
+    // If all attempts failed, log and return null
+    console.error('All audio download attempts failed');
+    return null;
+  }
+};
+
+/**
+ * Extracts word and pronunciations from the card content
+ * @param {string} content - The card content
+ * @returns {Object} - The word and pronunciations
+ */
+export const extractWordAndPronunciations = (content) => {
+  // Try to extract the word and pronunciation from the front card
+  const frontMatch = content.match(/==front part==([\s\S]*?)==front part==/);
+  if (!frontMatch) return null;
+  
+  const frontContent = frontMatch[1];
+  
+  // Look for bold word with pronunciation
+  const boldWordWithPronMatch = frontContent.match(/\*\*([^*]+)\*\*\s*(\/(.*?)\/)/);
+  
+  if (boldWordWithPronMatch) {
+    return {
+      word: boldWordWithPronMatch[1].trim(),
+      pronunciation: boldWordWithPronMatch[3].trim()
+    };
+  }
+  
+  // If no pronunciation format found, just get the bold word
+  const boldWordMatch = frontContent.match(/\*\*([^*]+)\*\*/);
+  if (boldWordMatch) {
+    return {
+      word: boldWordMatch[1].trim(),
+      pronunciation: null
+    };
+  }
+  
+  return null;
 };
