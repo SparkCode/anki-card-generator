@@ -205,7 +205,7 @@ export const addNote = async (deckName, content, allowDuplicate = false) => {
   
   const note = {
     deckName,
-    modelName: 'Basic',
+    modelName: 'Basic (and reversed card)',
     fields: {
       Front: front,
       Back: back
@@ -243,7 +243,7 @@ export const guiAddCards = async (deckName, content, allowDuplicate = false) => 
   
   const note = {
     deckName,
-    modelName: 'Basic',
+    modelName: 'Basic (and reversed card)',
     fields: {
       Front: front,
       Back: back

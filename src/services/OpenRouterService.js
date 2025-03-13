@@ -18,17 +18,17 @@ const getPromptText = (word, context = '') => {
 
 i have B2 level of english, so try to use vocabulary from B2 preferably (maybe C1)  
 
-when you do anki card do as similar to attached files as possible (at top side sentence and word i learn in bold with transcription inside sentence (you have to add transcription of the word always), at bottom side sentence and word replaced with % sign and with difenition of this word in english and top three translation in russian (but popular enough, if less three is also ok) but no the word i learn at bottom side)
+when you do anki card do as similar pattern as possible (at top side sentence and word i learn in bold with transcription inside sentence (you have to add transcription of the word always), at bottom side sentence and word replaced with % sign and with difenition of this word in english and top three translation in russian (but popular enough, if less three is also ok), at bottom side the word have always be replaced with % sign)
 
-do sentence moderate short like 10 words or so and with most popular usage with this word
+do sentence moderate short like 10 words or so and with most popular usage with this word (or with context i'll give you)
 
 in bold in top/bottom only show the word or set expression with the word
 
 Feel like a kind 24 yo teacher in university but informal so it feels warm
 
-So your goal is come up with anki card with word that given
+So your goal is come up with anki card with word that given by me
 
-you have to illustrate each sentence with image also  (write a prompt for google so i can find )
+you have to illustrate each sentence with image also  (write a prompt for google so i can find image)
 
 at comment section you can add most popular synonyms (and diff between the word and them) and antonyms.
 
@@ -37,8 +37,6 @@ at the end of the bottom write etimology of the word for better understanding an
 at top shortly part of speech (noun / verb / adjective) , formal it or informal, in which topics it's used like medicine, vacation etc (short)
 
 in comment: any important info that could help me learn the word correctly
-
-when you do image do it without the word!!!
 
 always write comments in italic 
 
@@ -53,8 +51,6 @@ write comments always in italic!!!
 always add line breaks between blocks 
 
 in backside all mentions of the word should be replaced with % sign
-
-in caps show only word and significant parts
 
 
 ===EXAMPLE===
@@ -77,6 +73,29 @@ _**Comments**: Commonly used in travel (train, plane, ship) and storage contexts
 **Synonyms**: section (broader, less specific), storage area (descriptive), cabin (when referring to a sleeping space in a train)
 
 **Antonyms**: open space, hallway
+==bottom part==
+
+==front part==
+Huge **shoutout** /ˈʃaʊtaʊt/ to all the volunteers who helped make the festival a success!
+
+*noun, informal, social media/community, recognition*
+==front part==
+
+==bottom part==
+Huge % to all the volunteers who helped make the festival a success!
+
+**Definition**: A public expression of praise, gratitude, or recognition.
+
+_**In Russian**: благодарность, привет, респект_
+
+**Comments**: _This word is very informal and commonly used on social media and in other casual settings to recognize someone's contributions or achievements. It's a friendly way to acknowledge someone or something._
+
+
+**Synonyms**: acknowledgment, recognition, commendation. _(acknowledgment is more formal, recognition is a general term for noticing something, and commendation implies official praise)_
+
+**Antonyms**: criticism, disapproval.
+
+**Etymology**: A combination of "shout" (meaning to speak loudly) and "out" (implying public expression). The term originated in hip-hop culture as a way to publicly acknowledge friends and supporters.
 ==bottom part==
 
 you have to add cards with==front part== and ==bottom part==
