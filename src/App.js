@@ -4,6 +4,7 @@ import WordForm from './components/WordForm';
 import CardDisplay from './components/CardDisplay';
 import ChatHistory from './components/ChatHistory';
 import CreateCardModal from './components/CreateCardModal';
+import LanguageSelector from './components/LanguageSelector';
 import { generateAnkiCard } from './services/OpenRouterService';
 import { guiAddCards, getDecks } from './services/AnkiService';
 import { hasApiKey, addChatHistoryEntry, getApiKey, setLocalStorageItem, getLocalStorageItem } from './utils/localStorage';
@@ -20,6 +21,9 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [createCardModalOpen, setCreateCardModalOpen] = useState(false);
   const [cardCreationSuccess, setCardCreationSuccess] = useState(null);
+  const [selectedLanguage, setSelectedLanguage] = useState(
+    getLocalStorageItem('userNativeLanguage') || 'Russian'
+  );
   
   // Function to directly open Anki UI with card content
   const openAnkiCardUI = async (content) => {
@@ -79,6 +83,11 @@ function App() {
     setApiKeyModalOpen(true);
   };
 
+  const handleLanguageSelect = (language) => {
+    setSelectedLanguage(language);
+    setLocalStorageItem('userNativeLanguage', language);
+  };
+
   const handleFormSubmit = async (word, context, selectedDeck) => {
     setIsLoading(true);
     setError('');
@@ -88,7 +97,7 @@ function App() {
     setCurrentDeck(selectedDeck);
     
     try {
-      const result = await generateAnkiCard(word, context);
+      const result = await generateAnkiCard(word, context, selectedLanguage);
       setCardContent(result.content);
       
       // Save to chat history
@@ -96,6 +105,7 @@ function App() {
         word,
         context,
         deck: selectedDeck,
+        nativeLanguage: selectedLanguage,
         response: result.content,
         usage: result.usage
       });
@@ -118,7 +128,7 @@ function App() {
     setCardContent('');
     
     try {
-      const result = await generateAnkiCard(currentWord, currentContext);
+      const result = await generateAnkiCard(currentWord, currentContext, selectedLanguage);
       setCardContent(result.content);
       
       // Save to chat history
@@ -126,6 +136,7 @@ function App() {
         word: currentWord,
         context: currentContext,
         deck: currentDeck,
+        nativeLanguage: selectedLanguage,
         response: result.content,
         usage: result.usage
       });
@@ -241,6 +252,16 @@ function App() {
               >
                 Update API Key
               </button>
+            </div>
+            
+            <div className="settings-section">
+              <h3>Language Preferences</h3>
+              <p>Select your native language for card translations:</p>
+              <LanguageSelector
+                selectedLanguage={selectedLanguage}
+                onLanguageSelect={handleLanguageSelect}
+                showLabel={false}
+              />
             </div>
             
             <div className="settings-section">

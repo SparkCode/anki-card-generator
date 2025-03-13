@@ -8,17 +8,20 @@ const DEFAULT_MODEL = 'google/gemini-2.0-flash-001';
  * Get the prompt text for the Anki card generation
  * @param {string} word - The word to create a card for
  * @param {string} context - Optional context for the word
+ * @param {string} nativeLanguage - User's native language (e.g., 'Russian', 'French', 'German')
  * @returns {string} - The formatted prompt
  */
-const getPromptText = (word, context = '') => {
+const getPromptText = (word, context = '', nativeLanguage = 'Russian') => {
   const contextPart = context ? `\nContext for this word: ${context}` : '';
-  
+  // Use the language directly, default to Russian if empty
+  const languageName = nativeLanguage && nativeLanguage.trim() ? nativeLanguage.trim() : 'Russian';
+
   return `
   i'm learning english with program Anki for memory words
 
 i have B2 level of english, so try to use vocabulary from B2 preferably (maybe C1)  
 
-when you do anki card do as similar pattern as possible (at top side sentence and word i learn in bold with transcription inside sentence (you have to add transcription of the word always), at bottom side sentence and word replaced with % sign and with difenition of this word in english and top three translation in russian (but popular enough, if less three is also ok), at bottom side the word have always be replaced with % sign)
+when you do anki card do as similar pattern as possible (at top side sentence and word i learn in bold with transcription inside sentence (you have to add transcription of the word always), at bottom side sentence and word replaced with % sign and with difenition of this word in english and top three translation in ${languageName} (but popular enough, if less three is also ok), at bottom side the word have always be replaced with % sign)
 
 do sentence moderate short like 10 words or so and with most popular usage with this word (or with context i'll give you)
 
@@ -42,7 +45,7 @@ always write comments in italic
 
 add line breaks between paragraphs 
 
-and write key words like Definition / in Russian / Comments in bold 
+and write key words like Definition / in ${languageName} / Comments in bold 
 
 in front card sentence should be at the beginning and add line break after
 
@@ -66,7 +69,7 @@ She placed her bag in the overhead % before taking her seat.
 
 **Definition**: A separate section or enclosed space within a larger container or structure, used for storing or organizing things.
 
-_**In Russian**: отсек, отделение, купе_
+_**In ${languageName}**: отсек, отделение, купе_
 
 _**Comments**: Commonly used in travel (train, plane, ship) and storage contexts. In aviation, "overhead %" refers to the space above seats for carry-on luggage. In trains, it can mean a private section for passengers._
 
@@ -86,7 +89,7 @@ Huge % to all the volunteers who helped make the festival a success!
 
 **Definition**: A public expression of praise, gratitude, or recognition.
 
-_**In Russian**: благодарность, привет, респект_
+_**In ${languageName}**: благодарность, привет, респект_
 
 **Comments**: _This word is very informal and commonly used on social media and in other casual settings to recognize someone's contributions or achievements. It's a friendly way to acknowledge someone or something._
 
@@ -107,16 +110,17 @@ Here's the word I want to learn:${word}${contextPart}`;
  * Generate an Anki card via OpenRouter API
  * @param {string} word - The word to create a card for
  * @param {string} context - Optional context for the word
+ * @param {string} nativeLanguage - User's native language (defaults to 'Russian')
  * @returns {Promise} - The API response
  */
-export const generateAnkiCard = async (word, context = '') => {
+export const generateAnkiCard = async (word, context = '', nativeLanguage = 'Russian') => {
   const apiKey = getApiKey();
   
   if (!apiKey) {
     throw new Error('API key not found. Please set your OpenRouter API key.');
   }
   
-  const promptContent = getPromptText(word, context);
+  const promptContent = getPromptText(word, context, nativeLanguage);
   
   const payload = {
     model: DEFAULT_MODEL,

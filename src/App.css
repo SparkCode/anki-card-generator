@@ -717,3 +717,59 @@ pre {
   border-radius: 4px;
   font-family: monospace;
 }
+
+/* Language Selector */
+.language-selector {
+  margin-bottom: 1.5rem;
+}
+
+.language-selector label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+/* History item language */
+.history-item-language {
+  display: inline-block;
+  font-size: 0.8rem;
+  color: #444;
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-right: 8px;
+}
+
+/* Settings language selector */
+.settings-section .form-group {
+  margin-bottom: 0;
+}
+
+.settings-section .language-selector {
+  width: 100%;
+  max-width: 300px;
+}
+
+.settings-modal .language-selector input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background-color: white;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.settings-modal .language-selector input:focus {
+  border-color: var(--primary-color);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(74, 107, 255, 0.2);
+}
+
+.form-help-text {
+  display: block;
+  margin-top: 4px;
+  color: #666;
+  font-size: 0.85rem;
+  font-style: italic;
+}
