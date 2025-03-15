@@ -1,6 +1,6 @@
 # Anki Card Generator
 
-A web application that helps language learners generate high-quality Anki flashcards using artificial intelligence. This tool leverages Claude 3.7 Sonnet via the OpenRouter API to create well-structured, pedagogically sound flashcards for vocabulary learning.
+A web application that helps language learners generate high-quality Anki flashcards using artificial intelligence. This tool leverages Claude 3.7 Sonnet via the OpenRouter API to create well-structured, pedagogically sound flashcards for vocabulary learning, with additional features like audio pronunciation through text-to-speech.
 
 ## Features
 
@@ -8,17 +8,20 @@ A web application that helps language learners generate high-quality Anki flashc
 - **B2-C1 Level Focus**: Cards are designed for intermediate to advanced English learners
 - **Standardized Format**: Each card includes:
   - Front side: Sentence with target word in bold + pronunciation + part of speech info
-  - Back side: Definition, Russian translations, usage notes, synonyms/antonyms, and etymology
+  - Back side: Definition, translations in your native language, usage notes, synonyms/antonyms, and etymology
+- **Audio Pronunciation**: Add audio pronunciations to your cards using OpenAI's text-to-speech technology
 - **Image Suggestions**: Includes Google image search prompts for visual reinforcement
 - **Chat History**: Save and revisit previously generated cards
 - **Direct Integration with Anki**: Create cards directly in your Anki decks via AnkiConnect
-- **Local Storage**: API key and history stored only in your browser
+- **Customizable Learning Settings**: Select your native language and English proficiency level
+- **Local Storage**: API keys and history stored only in your browser
 
 ## Getting Started
 
 ### Prerequisites
 
 - An OpenRouter API key (available from [OpenRouter](https://openrouter.ai/keys))
+- Optional: OpenAI API key for text-to-speech functionality
 - Anki desktop app with the AnkiConnect add-on installed (add-on code: 2055492159)
 - A modern web browser
 
@@ -60,7 +63,18 @@ _**Comments**: Commonly used in travel (train, plane, ship) and storage contexts
 **Synonyms**: section (broader, less specific), storage area (descriptive), cabin (when referring to a sleeping space in a train)
 
 **Antonyms**: open space, hallway
+
+**Etymology**: From Latin "compartimentum", meaning "to divide or separate"
 ```
+
+## Audio Functionality
+
+The application now supports adding audio pronunciations to your Anki cards:
+
+1. Generate a card for your target word
+2. If you've provided an OpenAI API key, you can generate audio for the example sentence
+3. The audio will be automatically added to your Anki card when using the "Create in Anki" feature
+4. You can preview the audio before adding it to your card
 
 ## Development
 
@@ -91,9 +105,10 @@ npm run deploy
 
 ## Technologies Used
 
-- React
-- OpenRouter API (Claude 3.7 Sonnet)
-- AnkiConnect API
+- React for the user interface
+- OpenRouter API (Claude 3.7 Sonnet) for AI-generated content
+- OpenAI API for text-to-speech functionality
+- AnkiConnect API for integration with Anki
 - localStorage for persistent storage
 - GitHub Pages for hosting
 
@@ -105,3 +120,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - Built for language learners using Anki's spaced repetition system
 - Powered by Anthropic's Claude 3.7 Sonnet via OpenRouter
+- Text-to-speech capabilities provided by OpenAI's TTS API
