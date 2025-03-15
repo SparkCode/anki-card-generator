@@ -10,15 +10,22 @@
 const extractAiExampleSentence = (cardContent) => {
   if (!cardContent) return null;
   
-  // Extract front part of the card
+  let sentence;
+  
+  // Check if the content has card markers
   const frontMatch = cardContent.match(/==front part==([\s\S]*?)==front part==/);
-  if (!frontMatch || !frontMatch[1]) return null;
   
-  const frontContent = frontMatch[1].trim();
-  
-  // Get the first line which should be the example sentence
-  const lines = frontContent.split('\n');
-  let sentence = lines[0].trim();
+  if (frontMatch && frontMatch[1]) {
+    // Extract from card content with markers
+    const frontContent = frontMatch[1].trim();
+    
+    // Get the first line which should be the example sentence
+    const lines = frontContent.split('\n');
+    sentence = lines[0].trim();
+  } else {
+    // Treat the input as a plain example sentence
+    sentence = cardContent.trim();
+  }
   
   // Process the sentence in steps for better reliability
   

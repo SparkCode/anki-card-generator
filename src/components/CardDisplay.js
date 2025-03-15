@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { getLocalStorageItem } from '../utils/localStorage';
+import { extractAiExampleSentence } from '../utils/extractors';
 import ExampleSentenceAudio from './ExampleSentenceAudio';
 // Basic resets and global styles
 import '../styles/reset.css';
@@ -266,8 +267,44 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate }) => {
               // Import the TTS generation function dynamically to avoid circular dependencies
               const { generateExampleAudio } = await import('../services/TtsService');
               
-              // Generate new audio
-              const { audioData } = await generateExampleAudio(currentWord, storedDictData.exampleSentence);
+              // Clean the sentence for TTS by removing pronunciation guides and formatting
+              const cleanExampleSentence = extractAiExampleSentence(
+                `==front part==
+                ${storedDictData.exampleSentence}
+                ==front part==`
+              );
+              
+              if (!cleanExampleSentence) {
+                // If extraction failed, fall back to the original sentence
+                console.warn('Failed to clean example sentence, using original');
+                
+                // Generate new audio with the original sentence
+                const { audioData } = await generateExampleAudio(currentWord, storedDictData.exampleSentence);
+                
+                // Create a blob URL from the audio data
+                const blob = new Blob([audioData], { type: 'audio/mp3' });
+                const newAudioUrl = URL.createObjectURL(blob);
+                
+                // Update the preview URL
+                setTtsPreviewUrl(newAudioUrl);
+                
+                // Update the dictionary data with the new audio URL
+                const updatedDictData = {
+                  ...storedDictData,
+                  ttsPreviewUrl: newAudioUrl
+                };
+                
+                // Save the updated data to localStorage
+                localStorage.setItem(
+                  `dictData_${currentWord.toLowerCase()}`, 
+                  JSON.stringify(updatedDictData)
+                );
+                
+                return newAudioUrl;
+              }
+              
+              // Generate new audio with the cleaned sentence
+              const { audioData } = await generateExampleAudio(currentWord, cleanExampleSentence);
               
               // Create a blob URL from the audio data
               const blob = new Blob([audioData], { type: 'audio/mp3' });
