@@ -225,12 +225,14 @@ function App() {
       // Generate TTS audio if enabled
       let ttsPreviewUrl = null;
       let attemptedTts = false;
+      let ttsGeneratedSuccessfully = false;
       if (exampleSentence && enableTts && hasOpenAIApiKey()) {
         attemptedTts = true; // Mark that we attempted to generate TTS
         const ttsResult = await generateTtsAudio(word, exampleSentence);
         if (ttsResult && ttsResult.success) {
           ttsAudioFilename = ttsResult.filename;
           ttsPreviewUrl = ttsResult.previewUrl;
+          ttsGeneratedSuccessfully = true;
         }
       }
       
@@ -239,15 +241,17 @@ function App() {
         data: dictionaryData,
         pronunciationInfo: {
           ...pronunciationInfo,
-          attemptedTts: attemptedTts
+          attemptedTts: attemptedTts,
+          ttsGeneratedSuccessfully: ttsGeneratedSuccessfully
         },
         exampleSentence,
         ttsAudioFilename,
-        ttsPreviewUrl,
+        // Don't store blob URLs in localStorage as they don't persist between sessions
+        // Instead we'll keep track of whether audio generation succeeded
         timestamp: Date.now()
       });
       
-      // Save to chat history with the pronunciation info
+      // Save to chat history with the pronunciation info (also don't store blob URLs)
       addChatHistoryEntry({
         word,
         context,
@@ -336,11 +340,12 @@ function App() {
         data: dictionaryData,
         pronunciationInfo: {
           ...pronunciationInfo,
-          attemptedTts: attemptedTts
+          attemptedTts: attemptedTts,
+          ttsGeneratedSuccessfully: !!ttsAudioFilename
         },
         exampleSentence,
         ttsAudioFilename,
-        ttsPreviewUrl,
+        // Don't store blob URLs as they aren't valid across sessions
         timestamp: Date.now()
       });
       

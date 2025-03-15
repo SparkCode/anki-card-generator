@@ -29,7 +29,7 @@ Include the following pronunciation: ${pronunciationInfo && (pronunciationInfo.u
 
 i have ${level} level of english, so try to use vocabulary from ${level}  
 
-when you do anki card do as similar pattern as possible (at top side sentence and word i learn in bold with transcription inside sentence (you have to add transcription of the word always), at bottom side sentence and word replaced with % sign and with difenition of this word in english and top three translation in ${languageName} (but popular enough, if less three is also ok), at bottom side the word have always be replaced with % sign)
+when you do anki card do as similar pattern as possible (at top side sentence and word i learn in bold, at bottom side sentence and word replaced with % sign and with difenition of this word in english and top three translation in ${languageName} (but popular enough, if less three is also ok), at bottom side the word have always be replaced with % sign)
 
 do sentence moderate short like 10 words or so and with most popular usage with this word (or with context i'll give you)
 
@@ -67,7 +67,7 @@ in backside all mentions of the word should be replaced with % sign
 ===EXAMPLE===
 
 ==front part==
-She placed her bag in the overhead **compartment** /kəmˈpɑːrtmənt/ before taking her seat.
+She placed her bag in the overhead **compartment** before taking her seat.
 
 *noun, general, travel, storage*
 ==front part==
@@ -87,7 +87,7 @@ _**Comments**: Commonly used in travel (train, plane, ship) and storage contexts
 ==bottom part==
 
 ==front part==
-Huge **shoutout** /ˈʃaʊtaʊt/ to all the volunteers who helped make the festival a success!
+Huge **shoutout** to all the volunteers who helped make the festival a success!
 
 *noun, informal, social media/community, recognition*
 ==front part==

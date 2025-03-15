@@ -597,3 +597,36 @@ export const extractWordAndPronunciations = (content) => {
   
   return null;
 };
+
+/**
+ * Retrieve media file from Anki by filename
+ * @param {string} filename - The filename of the media to retrieve
+ * @returns {Promise<ArrayBuffer>} - The media file data as ArrayBuffer
+ */
+export const fetchMediaFile = async (filename) => {
+  try {
+    console.log(`Fetching media file from Anki: ${filename}`);
+    
+    // Use Anki's retrieveMediaFile API
+    const base64Data = await invokeAnkiConnect('retrieveMediaFile', {
+      filename
+    });
+    
+    if (!base64Data) {
+      throw new Error(`Media file ${filename} not found in Anki`);
+    }
+    
+    // Convert base64 string to ArrayBuffer
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    return bytes.buffer;
+  } catch (error) {
+    console.error(`Error retrieving media file ${filename}:`, error);
+    throw error;
+  }
+};

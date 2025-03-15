@@ -75,11 +75,29 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate }) => {
   useEffect(() => {
     if (currentWord) {
       const storedDictData = getLocalStorageItem(`dictData_${currentWord.toLowerCase()}`);
+      console.log('Loading TTS data for word:', currentWord, 'Data:', storedDictData);
+      
       if (storedDictData) {
-        setHasTtsAudio(!!storedDictData.ttsAudioFilename);
+        // Show audio component if we have a filename or if TTS was generated successfully
+        const hasTts = !!storedDictData.ttsAudioFilename || 
+                      (!!storedDictData.exampleSentence && 
+                       (storedDictData.pronunciationInfo?.ttsGeneratedSuccessfully || 
+                        storedDictData.pronunciationInfo?.attemptedTts));
+        
+        setHasTtsAudio(hasTts);
         setTtsAudioFilename(storedDictData.ttsAudioFilename || null);
+        
+        // Only use ttsPreviewUrl if it exists and we're in the same browser session
+        // Blob URLs aren't valid across sessions
         setTtsPreviewUrl(storedDictData.ttsPreviewUrl || null);
         setExampleSentence(storedDictData.exampleSentence || '');
+        
+        console.log('TTS UI state:', {
+          hasTts,
+          ttsAudioFilename: storedDictData.ttsAudioFilename,
+          ttsPreviewUrl: storedDictData.ttsPreviewUrl,
+          exampleSentence: storedDictData.exampleSentence
+        });
       } else {
         setHasTtsAudio(false);
         setTtsAudioFilename(null);
@@ -274,49 +292,27 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate }) => {
                 ==front part==`
               );
               
-              if (!cleanExampleSentence) {
-                // If extraction failed, fall back to the original sentence
-                console.warn('Failed to clean example sentence, using original');
-                
-                // Generate new audio with the original sentence
-                const { audioData } = await generateExampleAudio(currentWord, storedDictData.exampleSentence);
-                
-                // Create a blob URL from the audio data
-                const blob = new Blob([audioData], { type: 'audio/mp3' });
-                const newAudioUrl = URL.createObjectURL(blob);
-                
-                // Update the preview URL
-                setTtsPreviewUrl(newAudioUrl);
-                
-                // Update the dictionary data with the new audio URL
-                const updatedDictData = {
-                  ...storedDictData,
-                  ttsPreviewUrl: newAudioUrl
-                };
-                
-                // Save the updated data to localStorage
-                localStorage.setItem(
-                  `dictData_${currentWord.toLowerCase()}`, 
-                  JSON.stringify(updatedDictData)
-                );
-                
-                return newAudioUrl;
-              }
+              const targetSentence = cleanExampleSentence || storedDictData.exampleSentence;
               
-              // Generate new audio with the cleaned sentence
-              const { audioData } = await generateExampleAudio(currentWord, cleanExampleSentence);
+              // Generate new audio
+              const { filename, audioData } = await generateExampleAudio(currentWord, targetSentence);
               
               // Create a blob URL from the audio data
               const blob = new Blob([audioData], { type: 'audio/mp3' });
               const newAudioUrl = URL.createObjectURL(blob);
               
-              // Update the preview URL
+              // Update the state
+              setTtsAudioFilename(filename);
               setTtsPreviewUrl(newAudioUrl);
               
-              // Update the dictionary data with the new audio URL
+              // Update the dictionary data but don't store the blob URL
               const updatedDictData = {
                 ...storedDictData,
-                ttsPreviewUrl: newAudioUrl
+                ttsAudioFilename: filename,
+                pronunciationInfo: {
+                  ...storedDictData.pronunciationInfo,
+                  ttsGeneratedSuccessfully: true
+                }
               };
               
               // Save the updated data to localStorage
