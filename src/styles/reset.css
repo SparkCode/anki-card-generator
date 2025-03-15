@@ -1,0 +1,25 @@
+/* Simple CSS reset to standardize styles across browsers */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Fix button styling inconsistencies */
+button {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  cursor: pointer;
+  color: inherit;
+}
+
+/* Ensure animations work properly in all browsers */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+} 

@@ -1,0 +1,108 @@
+/* Import global animations */
+@import '../styles/animations.scss';
+
+.standalone-example-audio {
+  margin: 16px 0;
+  
+  &__header {
+    margin-bottom: 8px;
+  }
+  
+  &__title {
+    font-weight: 700;
+    font-size: 18px;
+    margin: 0 0 8px 0;
+    color: #000;
+  }
+  
+  &__loading,
+  &__error,
+  &__not-found {
+    padding: 16px;
+    border-radius: 12px;
+    background-color: #fff;
+    box-shadow: 0 0 0 1px rgba(13, 35, 67, 0.1), 0 2px 7px -4px rgba(13, 35, 67, 0.4);
+  }
+  
+  &__loading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(0, 0, 0, 0.1);
+      border-top-color: #07f;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    p {
+      margin: 0;
+      font-size: 16px;
+    }
+  }
+  
+  &__error {
+    background-color: rgba(251, 92, 86, 0.1);
+    border-left: 3px solid #f33;
+    
+    p {
+      margin: 0;
+      color: #f33;
+      font-size: 16px;
+    }
+  }
+  
+  &__not-found {
+    background-color: rgba(0, 0, 0, 0.05);
+    
+    p {
+      margin: 0;
+      font-size: 16px;
+      color: rgba(0, 0, 0, 0.45);
+    }
+  }
+}
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+  .standalone-example-audio {
+    &__title {
+      color: #fff;
+    }
+    
+    &__loading,
+    &__error,
+    &__not-found {
+      background-color: #2f2f32;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 2px 7px -4px rgba(0, 0, 0, 0.4);
+    }
+    
+    &__loading {
+      .loading-spinner {
+        border-color: rgba(255, 255, 255, 0.1);
+        border-top-color: #56a8fc;
+      }
+    }
+    
+    &__error {
+      background-color: rgba(251, 92, 86, 0.1);
+      border-left: 3px solid #fb5c56;
+      
+      p {
+        color: #fb5c56;
+      }
+    }
+    
+    &__not-found {
+      background-color: rgba(255, 255, 255, 0.1);
+      
+      p {
+        color: rgba(255, 255, 255, 0.45);
+      }
+    }
+  }
+} 
