@@ -291,14 +291,30 @@ const PronunciationPreview = ({ word }) => {
   const [pronunciationInfo, setPronunciationInfo] = useState(null);
   const [audioPlaying, setAudioPlaying] = useState(null);
 
+  const [hasTtsAudio, setHasTtsAudio] = useState(false);
+  const [exampleSentence, setExampleSentence] = useState('');
+
+  const [ttsAudioFilename, setTtsAudioFilename] = useState(null);
+  const [ttsPreviewUrl, setTtsPreviewUrl] = useState(null);
+
   useEffect(() => {
     // Look up stored pronunciation info for this word
     if (word) {
       const storedDictData = getLocalStorageItem(`dictData_${word.toLowerCase()}`);
       if (storedDictData?.pronunciationInfo) {
         setPronunciationInfo(storedDictData.pronunciationInfo);
+        
+        // Check if TTS audio is available
+        setHasTtsAudio(!!storedDictData.ttsAudioFilename);
+        setTtsAudioFilename(storedDictData.ttsAudioFilename || null);
+        setTtsPreviewUrl(storedDictData.ttsPreviewUrl || null);
+        setExampleSentence(storedDictData.exampleSentence || '');
       } else {
         setPronunciationInfo(null);
+        setHasTtsAudio(false);
+        setTtsAudioFilename(null);
+        setTtsPreviewUrl(null);
+        setExampleSentence('');
       }
     }
   }, [word]);
@@ -384,6 +400,63 @@ const PronunciationPreview = ({ word }) => {
       <div style={{ fontSize: '0.8em', color: '#666', marginTop: '5px' }}>
         This audio will be added to your Anki card automatically
       </div>
+
+      {hasTtsAudio && (
+        <div style={{ 
+          marginTop: '10px', 
+          padding: '8px', 
+          backgroundColor: '#e6f7ff', 
+          borderRadius: '4px',
+          borderLeft: '3px solid #1890ff'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+            <span style={{ fontWeight: 'bold' }}>📢 Example Sentence Audio:</span>
+            <span style={{ backgroundColor: '#d6f5d6', padding: '2px 6px', borderRadius: '4px', fontSize: '0.8em' }}>TTS</span>
+            
+            {ttsPreviewUrl ? (
+              <button 
+                onClick={() => playAudio(ttsPreviewUrl, 'tts')}
+                disabled={audioPlaying !== null}
+                style={{
+                  padding: '4px 8px',
+                  backgroundColor: audioPlaying === 'tts' ? '#ccc' : '#e0e0e0',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                {audioPlaying === 'tts' ? 'Playing...' : 'Play Example'}
+                {audioPlaying !== 'tts' && <span>▶️</span>}
+              </button>
+            ) : (
+              <span style={{ 
+                backgroundColor: '#ffe58f', 
+                padding: '2px 6px', 
+                borderRadius: '4px', 
+                fontSize: '0.8em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <span>▶️</span> Audio ready for Anki
+              </span>
+            )}
+          </div>
+          
+          {exampleSentence && (
+            <div style={{ fontStyle: 'italic', marginBottom: '5px', fontSize: '0.9em' }}>
+              "{exampleSentence}"
+            </div>
+          )}
+          
+          <div style={{ fontSize: '0.8em', color: '#666' }}>
+            This example sentence audio will be added to your Anki card
+          </div>
+        </div>
+      )}
     </div>
   );
 };

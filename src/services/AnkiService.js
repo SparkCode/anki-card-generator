@@ -215,6 +215,49 @@ export const storeMediaFileFromUrl = async (url, filename) => {
 };
 
 /**
+ * Store binary audio data as a media file in Anki
+ * @param {ArrayBuffer} audioData - The audio data as ArrayBuffer
+ * @param {string} filename - Filename to save the audio as
+ * @returns {Promise<string>} - The filename used in Anki
+ */
+export const storeAudioData = async (audioData, filename) => {
+  try {
+    console.log(`Storing audio data as ${filename}`);
+    
+    // Convert ArrayBuffer to base64 string
+    const base64Data = arrayBufferToBase64(audioData);
+    
+    // Use Anki's storeMediaFile API with data parameter
+    const result = await invokeAnkiConnect('storeMediaFile', {
+      filename,
+      data: base64Data
+    });
+    
+    return result || filename;
+  } catch (error) {
+    console.error(`Error storing audio data as ${filename}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Convert ArrayBuffer to Base64 string
+ * @param {ArrayBuffer} buffer - The buffer to convert
+ * @returns {string} - Base64 encoded string
+ */
+const arrayBufferToBase64 = (buffer) => {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  
+  return btoa(binary);
+};
+
+/**
  * Add a note to Anki
  * @param {string} deckName - The name of the deck to add the note to
  * @param {string} content - The AI-generated card content
@@ -231,13 +274,19 @@ export const addNote = async (deckName, content, allowDuplicate = false, pronunc
   
   // Process pronunciation info if available
   if (pronunciationInfo) {
-    const { usAudioUrl, ukAudioUrl, usPronunciation, ukPronunciation, word } = pronunciationInfo;
+    const { usAudioUrl, ukAudioUrl, usPronunciation, ukPronunciation, word, ttsAudioFilename } = pronunciationInfo;
     
     // Create safe filenames based on the word
     const safeWord = word ? word.replace(/\s+/g, '_').toLowerCase().replace(/[^\w-]/g, '') : 'word';
     let audioHtml = '';
+    let ttsHtml = '';
     
     try {
+      // Add TTS example audio if available
+      if (ttsAudioFilename) {
+        ttsHtml = `<br/><br/>📢 [sound:${ttsAudioFilename}]`;
+      }
+      
       // Store US pronunciation
       if (usAudioUrl) {
         const usAudioFilename = `${safeWord}_us.mp3`;
@@ -257,7 +306,12 @@ export const addNote = async (deckName, content, allowDuplicate = false, pronunc
       // Add a line break before the audio references
       if (audioHtml) {
         audioHtml = '<br/><br/>' + audioHtml;
-        front = front + audioHtml; // Audio at the end of the card
+        front = front + audioHtml; // Pronunciation after content
+      }
+      
+      // Add TTS example sentence at the very end
+      if (ttsHtml) {
+        front = front + ttsHtml; // Example sentence at the end
       }
     } catch (error) {
       console.error('Error storing audio files:', error);
@@ -265,6 +319,12 @@ export const addNote = async (deckName, content, allowDuplicate = false, pronunc
     }
   }
   
+  // Determine tags based on whether TTS was successful
+  const tags = ['anki-card-generator'];
+  if (pronunciationInfo && !pronunciationInfo.ttsAudioFilename && pronunciationInfo.attemptedTts) {
+    tags.push('no_open_ai_tts');
+  }
+
   const note = {
     deckName,
     modelName: 'Basic (and reversed card)',
@@ -275,7 +335,7 @@ export const addNote = async (deckName, content, allowDuplicate = false, pronunc
     options: {
       allowDuplicate: allowDuplicate
     },
-    tags: ['anki-card-generator']
+    tags: tags
   };
   
   try {
@@ -306,13 +366,19 @@ export const guiAddCards = async (deckName, content, allowDuplicate = false, pro
   
   // Process pronunciation info if available
   if (pronunciationInfo) {
-    const { usAudioUrl, ukAudioUrl, usPronunciation, ukPronunciation, word } = pronunciationInfo;
+    const { usAudioUrl, ukAudioUrl, usPronunciation, ukPronunciation, word, ttsAudioFilename } = pronunciationInfo;
     
     // Create safe filenames based on the word
     const safeWord = word ? word.replace(/\s+/g, '_').toLowerCase().replace(/[^\w-]/g, '') : 'word';
     let audioHtml = '';
+    let ttsHtml = '';
     
     try {
+      // Add TTS example audio if available
+      if (ttsAudioFilename) {
+        ttsHtml = `<br/><br/>📢 [sound:${ttsAudioFilename}]`;
+      }
+      
       // Store US pronunciation
       if (usAudioUrl) {
         const usAudioFilename = `${safeWord}_us.mp3`;
@@ -332,7 +398,12 @@ export const guiAddCards = async (deckName, content, allowDuplicate = false, pro
       // Add a line break before the audio references
       if (audioHtml) {
         audioHtml = '<br/><br/>' + audioHtml;
-        front = front + audioHtml; // Audio at the end of the card
+        front = front + audioHtml; // Pronunciation after content
+      }
+      
+      // Add TTS example sentence at the very end
+      if (ttsHtml) {
+        front = front + ttsHtml; // Example sentence at the end
       }
     } catch (error) {
       console.error('Error storing audio files:', error);
@@ -340,6 +411,12 @@ export const guiAddCards = async (deckName, content, allowDuplicate = false, pro
     }
   }
   
+  // Determine tags based on whether TTS was successful
+  const tags = ['anki-card-generator'];
+  if (pronunciationInfo && !pronunciationInfo.ttsAudioFilename && pronunciationInfo.attemptedTts) {
+    tags.push('no_open_ai_tts');
+  }
+
   const note = {
     deckName,
     modelName: 'Basic (and reversed card)',
@@ -350,7 +427,7 @@ export const guiAddCards = async (deckName, content, allowDuplicate = false, pro
     options: {
       allowDuplicate: allowDuplicate
     },
-    tags: ['anki-card-generator']
+    tags: tags
   };
   
   return invokeAnkiConnect('guiAddCards', { note });

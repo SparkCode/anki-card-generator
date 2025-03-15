@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import APIKeyModal from './components/APIKeyModal';
+import APISettingsModal from './components/APISettingsModal';
 import WordForm from './components/WordForm';
 import CardDisplay from './components/CardDisplay';
 import ChatHistory from './components/ChatHistory';
@@ -7,13 +7,15 @@ import CreateCardModal from './components/CreateCardModal';
 import LanguageSelector from './components/LanguageSelector';
 import EnglishLevelSelector from './components/EnglishLevelSelector';
 import { generateAnkiCard } from './services/OpenRouterService';
-import { guiAddCards, getDecks } from './services/AnkiService';
+import { guiAddCards, getDecks, storeAudioData } from './services/AnkiService';
 import { fetchWordInfo, extractPronunciationInfo } from './services/DictionaryService'; 
 import { hasApiKey, addChatHistoryEntry, getApiKey, setLocalStorageItem, getLocalStorageItem } from './utils/localStorage';
+import { hasOpenAIApiKey, generateExampleAudio } from './services/TtsService';
 import './App.css';
+const { extractAiExampleSentence } = require('./utils/extractors');
 
 function App() {
-  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
+  const [apiSettingsModalOpen, setApiSettingsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [cardContent, setCardContent] = useState('');
@@ -23,6 +25,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [createCardModalOpen, setCreateCardModalOpen] = useState(false);
   const [cardCreationSuccess, setCardCreationSuccess] = useState(null);
+  const [enableTts, setEnableTts] = useState(getLocalStorageItem('enableTts') !== false); // Default to true
   const [selectedLanguage, setSelectedLanguage] = useState(
     getLocalStorageItem('userNativeLanguage') || 'Russian'
   );
@@ -38,10 +41,15 @@ function App() {
       
       // Try to get stored pronunciation info for the current word
       let pronunciationInfo = null;
+      let ttsAudioFilename = null;
+      
       if (currentWord) {
         const storedDictData = getLocalStorageItem(`dictData_${currentWord}`);
-        if (storedDictData?.pronunciationInfo) {
-          pronunciationInfo = storedDictData.pronunciationInfo;
+        if (storedDictData) {
+          pronunciationInfo = {
+            ...storedDictData.pronunciationInfo,
+            ttsAudioFilename: storedDictData.ttsAudioFilename
+          };
         }
       }
       
@@ -77,12 +85,12 @@ function App() {
   // Check if API key exists when the component mounts
   useEffect(() => {
     if (!hasApiKey()) {
-      setApiKeyModalOpen(true);
+      setApiSettingsModalOpen(true);
     }
   }, []);
 
-  const handleApiKeySave = () => {
-    setApiKeyModalOpen(false);
+  const handleApiSettingsSave = () => {
+    setApiSettingsModalOpen(false);
   };
 
   const handleOpenSettings = () => {
@@ -92,9 +100,15 @@ function App() {
   const handleCloseSettings = () => {
     setShowSettings(false);
   };
+  
+  const handleToggleTts = () => {
+    const newValue = !enableTts;
+    setEnableTts(newValue);
+    setLocalStorageItem('enableTts', newValue);
+  };
 
-  const handleUpdateApiKey = () => {
-    setApiKeyModalOpen(true);
+  const handleUpdateApiSettings = () => {
+    setApiSettingsModalOpen(true);
   };
 
   const handleLanguageSelect = (language) => {
@@ -105,6 +119,61 @@ function App() {
   const handleEnglishLevelSelect = (level) => {
     setSelectedEnglishLevel(level);
     setLocalStorageItem('userEnglishLevel', level);
+  };
+  
+  // Extract example sentence from dictionary data
+  const extractExampleSentence = (dictionaryData) => {
+    if (!dictionaryData || !dictionaryData.definition || !dictionaryData.definition.length) {
+      return null;
+    }
+    
+    // Look through all definitions for examples
+    for (const def of dictionaryData.definition) {
+      if (def.example && def.example.length > 0) {
+        // Return the first example that has enough words (at least 4)
+        for (const example of def.example) {
+          if (example.text && example.text.split(' ').length >= 4) {
+            return example.text;
+          }
+        }
+      }
+    }
+    
+    return null;
+  };
+  
+  // Extract example sentence from AI-generated card content is now imported from utils/extractors.js
+  
+  // Generate TTS audio for a sentence
+  const generateTtsAudio = async (word, sentence) => {
+    if (!hasOpenAIApiKey() || !enableTts || !sentence) {
+      return null;
+    }
+    
+    try {
+      console.log('Generating TTS audio for:', sentence);
+      const { filename, audioData } = await generateExampleAudio(word, sentence);
+      
+      // Store in Anki
+      await storeAudioData(audioData, filename);
+      
+      // Create a blob URL for playback in the browser
+      const audioBlob = new Blob([audioData], { type: 'audio/mp3' });
+      const audioBlobUrl = URL.createObjectURL(audioBlob);
+      
+      console.log('TTS audio generated successfully as:', filename);
+      return {
+        filename,
+        previewUrl: audioBlobUrl,
+        success: true
+      };
+    } catch (error) {
+      console.error('Failed to generate TTS audio:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
   };
 
   const handleFormSubmit = async (word, context, selectedDeck) => {
@@ -118,25 +187,56 @@ function App() {
     try {
       // First, try to fetch dictionary data for the word
       let pronunciationInfo = null;
+      let exampleSentence = null;
+      let ttsAudioFilename = null;
+      
+      let dictionaryData = null;
       try {
-        const dictionaryData = await fetchWordInfo(word);
+        dictionaryData = await fetchWordInfo(word);
         pronunciationInfo = extractPronunciationInfo(dictionaryData);
         
-        // Store the dictionary data in localStorage for later use
-        setLocalStorageItem(`dictData_${word}`, {
-          data: dictionaryData,
-          pronunciationInfo,
-          timestamp: Date.now()
-        });
+        // Extract example sentence for TTS
+        exampleSentence = extractExampleSentence(dictionaryData);
       } catch (dictError) {
         // If dictionary lookup fails, just log it and continue without pronunciation info
         console.warn('Dictionary lookup failed:', dictError);
         // Don't throw the error as we still want to generate the card
       }
       
-      // Then generate the card with the pronunciation info if available
+      // Generate the card with the pronunciation info if available
       const result = await generateAnkiCard(word, context, selectedLanguage, selectedEnglishLevel, pronunciationInfo);
       setCardContent(result.content);
+      
+      // Extract example sentence from the AI-generated card (this is preferred over dictionary)
+      const aiExampleSentence = extractAiExampleSentence(result.content);
+      if (aiExampleSentence) {
+        exampleSentence = aiExampleSentence;
+      }
+      
+      // Generate TTS audio if enabled
+      let ttsPreviewUrl = null;
+      let attemptedTts = false;
+      if (exampleSentence && enableTts && hasOpenAIApiKey()) {
+        attemptedTts = true; // Mark that we attempted to generate TTS
+        const ttsResult = await generateTtsAudio(word, exampleSentence);
+        if (ttsResult && ttsResult.success) {
+          ttsAudioFilename = ttsResult.filename;
+          ttsPreviewUrl = ttsResult.previewUrl;
+        }
+      }
+      
+      // Store the dictionary data in localStorage for later use
+      setLocalStorageItem(`dictData_${word}`, {
+        data: dictionaryData,
+        pronunciationInfo: {
+          ...pronunciationInfo,
+          attemptedTts: attemptedTts
+        },
+        exampleSentence,
+        ttsAudioFilename,
+        ttsPreviewUrl,
+        timestamp: Date.now()
+      });
       
       // Save to chat history with the pronunciation info
       addChatHistoryEntry({
@@ -146,7 +246,9 @@ function App() {
         nativeLanguage: selectedLanguage,
         englishLevel: selectedEnglishLevel,
         response: result.content,
-        pronunciationInfo, // Add pronunciation info to history
+        pronunciationInfo,
+        exampleSentence,
+        ttsAudioFilename,
         usage: result.usage
       });
       
@@ -170,31 +272,68 @@ function App() {
     try {
       // First, check if we already have dictionary data for this word
       let pronunciationInfo = null;
+      let exampleSentence = null;
+      let ttsAudioFilename = null;
+      let dictionaryData = null;
       const storedDictData = getLocalStorageItem(`dictData_${currentWord}`);
       
-      if (storedDictData?.pronunciationInfo) {
-        pronunciationInfo = storedDictData.pronunciationInfo;
-      } else {
-        // If not, try to fetch it
+      if (storedDictData) {
+        pronunciationInfo = {
+          ...storedDictData.pronunciationInfo,
+          ttsAudioFilename: storedDictData.ttsAudioFilename
+        };
+        exampleSentence = storedDictData.exampleSentence;
+        ttsAudioFilename = storedDictData.ttsAudioFilename;
+        dictionaryData = storedDictData.data;
+      } 
+      
+      // If no stored data, fetch dictionary data
+      if (!storedDictData) {
         try {
-          const dictionaryData = await fetchWordInfo(currentWord);
+          dictionaryData = await fetchWordInfo(currentWord);
           pronunciationInfo = extractPronunciationInfo(dictionaryData);
-          
-          // Store for future use
-          setLocalStorageItem(`dictData_${currentWord}`, {
-            data: dictionaryData,
-            pronunciationInfo,
-            timestamp: Date.now()
-          });
+          exampleSentence = extractExampleSentence(dictionaryData);
         } catch (dictError) {
           console.warn('Dictionary lookup failed during regeneration:', dictError);
-          // Continue without pronunciation info
+          // Continue without additional info
         }
       }
       
       // Generate the card with pronunciation info if available
       const result = await generateAnkiCard(currentWord, currentContext, selectedLanguage, selectedEnglishLevel, pronunciationInfo);
       setCardContent(result.content);
+      
+      // Extract example sentence from the AI-generated card (this is preferred over dictionary)
+      const aiExampleSentence = extractAiExampleSentence(result.content);
+      if (aiExampleSentence) {
+        exampleSentence = aiExampleSentence;
+      }
+      
+      // Generate TTS audio if enabled and not already available, or if we have a new AI example
+      let ttsPreviewUrl = null;
+      let attemptedTts = pronunciationInfo?.attemptedTts || false;
+      if (exampleSentence && enableTts && hasOpenAIApiKey() && 
+          (aiExampleSentence || !ttsAudioFilename)) {
+        attemptedTts = true;
+        const ttsResult = await generateTtsAudio(currentWord, exampleSentence);
+        if (ttsResult && ttsResult.success) {
+          ttsAudioFilename = ttsResult.filename;
+          ttsPreviewUrl = ttsResult.previewUrl;
+        }
+      }
+      
+      // Store for future use
+      setLocalStorageItem(`dictData_${currentWord}`, {
+        data: dictionaryData,
+        pronunciationInfo: {
+          ...pronunciationInfo,
+          attemptedTts: attemptedTts
+        },
+        exampleSentence,
+        ttsAudioFilename,
+        ttsPreviewUrl,
+        timestamp: Date.now()
+      });
       
       // Save to chat history with pronunciation info
       addChatHistoryEntry({
@@ -205,6 +344,8 @@ function App() {
         englishLevel: selectedEnglishLevel,
         response: result.content,
         pronunciationInfo,
+        exampleSentence,
+        ttsAudioFilename,
         usage: result.usage
       });
     } catch (err) {
@@ -299,9 +440,9 @@ function App() {
         </section>
       </main>
 
-      <APIKeyModal 
-        isOpen={apiKeyModalOpen} 
-        onSave={handleApiKeySave} 
+      <APISettingsModal 
+        isOpen={apiSettingsModalOpen} 
+        onSave={handleApiSettingsSave} 
       />
       
       <CreateCardModal
@@ -318,14 +459,34 @@ function App() {
             <h2>Settings</h2>
             
             <div className="settings-section">
-              <h3>API Key</h3>
-              <p>Current API Key: {getApiKey() ? '••••••••' + getApiKey().slice(-4) : 'Not set'}</p>
+              <h3>API Settings</h3>
+              <p>OpenRouter API Key: {getApiKey() ? '••••••••' + getApiKey().slice(-4) : 'Not set'}</p>
+              <p>OpenAI API Key: {hasOpenAIApiKey() ? '••••••••' : 'Not set'}</p>
               <button 
                 className="button secondary"
-                onClick={handleUpdateApiKey}
+                onClick={handleUpdateApiSettings}
               >
-                Update API Key
+                Manage API Keys
               </button>
+            </div>
+            
+            <div className="settings-section">
+              <h3>Text-to-Speech</h3>
+              <div className="setting-toggle">
+                <label htmlFor="tts-toggle">Generate example audio using OpenAI TTS</label>
+                <input
+                  id="tts-toggle"
+                  type="checkbox"
+                  checked={enableTts}
+                  onChange={handleToggleTts}
+                />
+              </div>
+              <p className="help-text">
+                When enabled, the app will generate audio for example sentences using OpenAI's text-to-speech.
+                {!hasOpenAIApiKey() && enableTts && (
+                  <span className="warning-text"> OpenAI API key is required for this feature.</span>
+                )}
+              </p>
             </div>
             
             <div className="settings-section">
@@ -351,7 +512,7 @@ function App() {
             <div className="settings-section">
               <h3>About</h3>
               <p>This app generates Anki flashcards using OpenRouter API to access Google Gemini 2.0 Flash.</p>
-              <p>Your API key is stored only in your browser's local storage.</p>
+              <p>Your API keys are stored only in your browser's local storage.</p>
             </div>
             
             <button 

@@ -67,12 +67,15 @@ const CreateCardModal = ({ isOpen, onClose, cardContent, onSuccess, word }) => {
         return;
       }
       
-      // Get pronunciation info if available
+      // Get pronunciation info and TTS audio if available
       let pronunciationInfo = null;
       if (word) {
         const storedDictData = getLocalStorageItem(`dictData_${word}`);
-        if (storedDictData?.pronunciationInfo) {
-          pronunciationInfo = storedDictData.pronunciationInfo;
+        if (storedDictData) {
+          pronunciationInfo = {
+            ...storedDictData.pronunciationInfo,
+            ttsAudioFilename: storedDictData.ttsAudioFilename
+          };
         }
       }
       
@@ -109,12 +112,15 @@ const CreateCardModal = ({ isOpen, onClose, cardContent, onSuccess, word }) => {
         return;
       }
       
-      // Get pronunciation info if available
+      // Get pronunciation info and TTS audio if available
       let pronunciationInfo = null;
       if (word) {
         const storedDictData = getLocalStorageItem(`dictData_${word}`);
-        if (storedDictData?.pronunciationInfo) {
-          pronunciationInfo = storedDictData.pronunciationInfo;
+        if (storedDictData) {
+          pronunciationInfo = {
+            ...storedDictData.pronunciationInfo,
+            ttsAudioFilename: storedDictData.ttsAudioFilename
+          };
         }
       }
       
