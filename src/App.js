@@ -23,6 +23,7 @@ function App() {
   const [currentContext, setCurrentContext] = useState('');
   const [currentDeck, setCurrentDeck] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [showApiSettings, setShowApiSettings] = useState(false);
   const [createCardModalOpen, setCreateCardModalOpen] = useState(false);
   const [cardCreationSuccess, setCardCreationSuccess] = useState(null);
   const [enableTts, setEnableTts] = useState(getLocalStorageItem('enableTts') !== false); // Default to true
@@ -91,6 +92,7 @@ function App() {
 
   const handleApiSettingsSave = () => {
     setApiSettingsModalOpen(false);
+    setShowApiSettings(false); // Close the API settings section if it's open within settings modal
   };
 
   const handleOpenSettings = () => {
@@ -99,6 +101,7 @@ function App() {
 
   const handleCloseSettings = () => {
     setShowSettings(false);
+    setShowApiSettings(false); // Also reset the API settings view when closing settings
   };
   
   const handleToggleTts = () => {
@@ -108,7 +111,13 @@ function App() {
   };
 
   const handleUpdateApiSettings = () => {
-    setApiSettingsModalOpen(true);
+    if (showSettings) {
+      // If settings modal is open, show API settings within it
+      setShowApiSettings(true);
+    } else {
+      // Otherwise open the standalone API settings modal
+      setApiSettingsModalOpen(true);
+    }
   };
 
   const handleLanguageSelect = (language) => {
@@ -440,10 +449,13 @@ function App() {
         </section>
       </main>
 
-      <APISettingsModal 
-        isOpen={apiSettingsModalOpen} 
-        onSave={handleApiSettingsSave} 
-      />
+      {/* Standalone API settings modal (used when first loading app or when settings modal is not open) */}
+      {apiSettingsModalOpen && !showSettings && (
+        <APISettingsModal 
+          isOpen={true}
+          onSave={handleApiSettingsSave} 
+        />
+      )}
       
       <CreateCardModal
         isOpen={createCardModalOpen}
@@ -456,71 +468,90 @@ function App() {
       {showSettings && (
         <div className="settings-modal-overlay">
           <div className="settings-modal">
-            <h2>Settings</h2>
-            
-            <div className="settings-section">
-              <h3>API Settings</h3>
-              <p>OpenRouter API Key: {getApiKey() ? '••••••••' + getApiKey().slice(-4) : 'Not set'}</p>
-              <p>OpenAI API Key: {hasOpenAIApiKey() ? '••••••••' : 'Not set'}</p>
-              <button 
-                className="button secondary"
-                onClick={handleUpdateApiSettings}
-              >
-                Manage API Keys
-              </button>
-            </div>
-            
-            <div className="settings-section">
-              <h3>Text-to-Speech</h3>
-              <div className="setting-toggle">
-                <label htmlFor="tts-toggle">Generate example audio using OpenAI TTS</label>
-                <input
-                  id="tts-toggle"
-                  type="checkbox"
-                  checked={enableTts}
-                  onChange={handleToggleTts}
+            {!showApiSettings ? (
+              <>
+                <h2>Settings</h2>
+                
+                <div className="settings-section">
+                  <h3>API Settings</h3>
+                  <p>OpenRouter API Key: {getApiKey() ? '••••••••' + getApiKey().slice(-4) : 'Not set'}</p>
+                  <p>OpenAI API Key: {hasOpenAIApiKey() ? '••••••••' : 'Not set'}</p>
+                  <button 
+                    className="button secondary"
+                    onClick={handleUpdateApiSettings}
+                  >
+                    Manage API Keys
+                  </button>
+                </div>
+                
+                <div className="settings-section">
+                  <h3>Text-to-Speech</h3>
+                  <div className="setting-toggle">
+                    <label htmlFor="tts-toggle">Generate example audio using OpenAI TTS</label>
+                    <input
+                      id="tts-toggle"
+                      type="checkbox"
+                      checked={enableTts}
+                      onChange={handleToggleTts}
+                    />
+                  </div>
+                  <p className="help-text">
+                    When enabled, the app will generate audio for example sentences using OpenAI's text-to-speech.
+                    {!hasOpenAIApiKey() && enableTts && (
+                      <span className="warning-text"> OpenAI API key is required for this feature.</span>
+                    )}
+                  </p>
+                </div>
+                
+                <div className="settings-section">
+                  <h3>Language Preferences</h3>
+                  <p>Select your native language for card translations:</p>
+                  <LanguageSelector
+                    selectedLanguage={selectedLanguage}
+                    onLanguageSelect={handleLanguageSelect}
+                    showLabel={false}
+                  />
+                </div>
+                
+                <div className="settings-section">
+                  <h3>English Level</h3>
+                  <p>Specify your English proficiency level:</p>
+                  <EnglishLevelSelector
+                    selectedLevel={selectedEnglishLevel}
+                    onLevelSelect={handleEnglishLevelSelect}
+                    showLabel={false}
+                  />
+                </div>
+                
+                <div className="settings-section">
+                  <h3>About</h3>
+                  <p>This app generates Anki flashcards using OpenRouter API to access Google Gemini 2.0 Flash.</p>
+                  <p>Your API keys are stored only in your browser's local storage.</p>
+                </div>
+                
+                <button 
+                  className="button primary close-button"
+                  onClick={handleCloseSettings}
+                >
+                  Close
+                </button>
+              </>
+            ) : (
+              <div className="api-settings-container">
+                <h2>API Settings</h2>
+                <APISettingsModal 
+                  isOpen={true}
+                  onSave={handleApiSettingsSave}
+                  embedded={true}
                 />
+                <button 
+                  className="button secondary back-button"
+                  onClick={() => setShowApiSettings(false)}
+                >
+                  Back to Settings
+                </button>
               </div>
-              <p className="help-text">
-                When enabled, the app will generate audio for example sentences using OpenAI's text-to-speech.
-                {!hasOpenAIApiKey() && enableTts && (
-                  <span className="warning-text"> OpenAI API key is required for this feature.</span>
-                )}
-              </p>
-            </div>
-            
-            <div className="settings-section">
-              <h3>Language Preferences</h3>
-              <p>Select your native language for card translations:</p>
-              <LanguageSelector
-                selectedLanguage={selectedLanguage}
-                onLanguageSelect={handleLanguageSelect}
-                showLabel={false}
-              />
-            </div>
-            
-            <div className="settings-section">
-              <h3>English Level</h3>
-              <p>Specify your English proficiency level:</p>
-              <EnglishLevelSelector
-                selectedLevel={selectedEnglishLevel}
-                onLevelSelect={handleEnglishLevelSelect}
-                showLabel={false}
-              />
-            </div>
-            
-            <div className="settings-section">
-              <h3>About</h3>
-              <p>This app generates Anki flashcards using OpenRouter API to access Google Gemini 2.0 Flash.</p>
-              <p>Your API keys are stored only in your browser's local storage.</p>
-            </div>
-            
-            <button 
-              className="button primary close-button"
-              onClick={handleCloseSettings}
-            >
-              Close
-            </button>
+            )}
           </div>
         </div>
       )}

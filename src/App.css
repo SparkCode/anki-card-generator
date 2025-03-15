@@ -807,19 +807,25 @@ pre {
   box-shadow: 0 0 0 2px rgba(74, 107, 255, 0.2);
 }
 
-/* History item details */
-.history-item-details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 4px;
+.back-button {
+  margin-top: 1rem;
 }
 
-.history-item-level {
-  display: inline-block;
-  font-size: 0.8rem;
-  color: #444;
-  background-color: rgba(74, 107, 255, 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
+.api-settings-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.api-settings-container h2 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+.api-settings-container .form-group {
+  margin-bottom: 1.5rem;
+}
+
+.api-settings-container .modal-actions {
+  margin-top: 1rem;
 }

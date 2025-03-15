@@ -72,13 +72,6 @@ const ChatHistory = ({ onHistoryItemClick }) => {
             <div className="history-item-word">{item.word}</div>
             <div className="history-item-meta">
               {item.deck && <span className="history-item-deck">{item.deck}</span>}
-              <div className="history-item-details">
-                {item.englishLevel && (
-                  <span className="history-item-level">
-                    {item.englishLevel}
-                  </span>
-                )}
-              </div>
               <span className="history-item-date">{formatDate(item.timestamp)}</span>
             </div>
             <button 
