@@ -251,6 +251,49 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate }) => {
           sentence={exampleSentence}
           audioUrl={ttsPreviewUrl}
           audioFilename={ttsAudioFilename}
+          cardId={currentWord}
+          onRefresh={async () => {
+            try {
+              // Get the stored example data
+              const storedDictData = getLocalStorageItem(`dictData_${currentWord.toLowerCase()}`);
+              if (!storedDictData || !storedDictData.exampleSentence) {
+                throw new Error('No example sentence found for regeneration');
+              }
+              
+              // Clear the current audio URL to show loading state
+              setTtsPreviewUrl(null);
+              
+              // Import the TTS generation function dynamically to avoid circular dependencies
+              const { generateExampleAudio } = await import('../services/TtsService');
+              
+              // Generate new audio
+              const { audioData } = await generateExampleAudio(currentWord, storedDictData.exampleSentence);
+              
+              // Create a blob URL from the audio data
+              const blob = new Blob([audioData], { type: 'audio/mp3' });
+              const newAudioUrl = URL.createObjectURL(blob);
+              
+              // Update the preview URL
+              setTtsPreviewUrl(newAudioUrl);
+              
+              // Update the dictionary data with the new audio URL
+              const updatedDictData = {
+                ...storedDictData,
+                ttsPreviewUrl: newAudioUrl
+              };
+              
+              // Save the updated data to localStorage
+              localStorage.setItem(
+                `dictData_${currentWord.toLowerCase()}`, 
+                JSON.stringify(updatedDictData)
+              );
+              
+              return newAudioUrl;
+            } catch (error) {
+              console.error('Failed to regenerate TTS audio:', error);
+              throw error;
+            }
+          }}
         />
       )}
       

@@ -2,184 +2,220 @@
 @import '../styles/animations.scss';
 
 .example-sentence-audio {
-  border-radius: 12px;
-  padding: 16px;
   margin: 16px 0;
-  background-color: #e6f7ff;
-  border-left: 3px solid #1890ff;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.05);
   
   &__header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
   }
   
   &__title {
-    margin: 0;
-    font-weight: 700;
-    font-size: 16px;
-    color: #000;
+    font-weight: 500;
+    margin-right: 8px;
   }
   
   &__badge {
-    background-color: #d6f5d6;
+    display: inline-block;
+    font-size: 12px;
     padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.8em;
+    border-radius: 6px;
+    background-color: #07f;
+    color: #fff;
+    
+    &--cached {
+      background-color: #00b341;
+      margin-left: 4px;
+    }
+  }
+  
+  &__refresh-button {
+    margin-left: auto;
+    background-color: rgba(0, 0, 0, 0.05);
+    border: none;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: background-color 0.2s ease-in-out;
+    
+    &:hover:not(:disabled) {
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+    
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+  
+  &__retry-button {
+    margin-left: 8px;
+    background-color: #f33;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+    
+    &:hover:not(:disabled) {
+      background-color: #e52e2e;
+    }
+    
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   }
   
   &__content {
-    display: flex;
-    flex-direction: column;
+    margin-bottom: 8px;
   }
   
   &__row {
     display: flex;
     align-items: center;
-    margin-bottom: 8px;
-    position: relative;
+    justify-content: space-between;
   }
   
   &__text {
-    margin: 0;
+    flex: 1;
+    margin-right: 10px;
     font-style: italic;
-    font-size: 0.9em;
     color: #000;
-    line-height: 1.5;
-    padding-right: 16px; /* Add space for the button */
   }
   
   &__play-button {
-    width: 30px;
-    height: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #4287f5;
-    color: white;
-    border: none;
-    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #07f;
+    color: #fff;
     cursor: pointer;
-    transition: all 0.2s ease-in-out;
-    flex-shrink: 0;
-    font-size: 20px;
+    border: none;
+    transition: background-color 0.2s ease-in-out;
     
-    &:hover:not(:disabled) {
-      background-color: #5495f7;
-    }
-    
-    &:disabled {
-      cursor: not-allowed;
-      opacity: 0.7;
+    &:hover {
+      background-color: #56a8fc;
     }
     
     &.playing {
-      background-color: #3776db;
+      animation: pulse 2s infinite;
     }
+  }
+  
+  &__anki-ready {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.45);
+    color: #fff;
+    opacity: 0.6;
+  }
+  
+  &__no-audio-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #f33;
+    color: #fff;
+  }
+  
+  &__footer {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.45);
+    text-align: center;
   }
   
   &__loading {
     display: flex;
     align-items: center;
-    gap: 8px;
-    color: rgba(0, 0, 0, 0.45);
-    font-size: 14px;
+    justify-content: center;
     
     .loading-spinner {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2px solid rgba(0, 0, 0, 0.1);
-      border-top-color: #07f;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
+      margin-right: 8px;
     }
   }
   
-  &__no-audio, &__no-audio-icon {
-    width: 56px;
-    height: 56px;
-    color: rgba(0, 0, 0, 0.45);
-    font-size: 14px;
+  &__no-audio {
+    color: #f33;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #f5f5f5;
-    border-radius: 8px;
-  }
-  
-  &__anki-ready {
-    width: 56px;
-    height: 56px;
-    background-color: #f5f5f5;
-    color: #874d00;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    font-size: 20px;
-  }
-  
-  &__footer {
-    font-size: 0.8em;
-    color: #666;
-    margin-top: 8px;
   }
 }
 
-/* Dark mode styles */
 @media (prefers-color-scheme: dark) {
   .example-sentence-audio {
-    background-color: rgba(24, 144, 255, 0.1);
-    border-left-color: rgba(24, 144, 255, 0.7);
-    
-    &__title {
-      color: #fff;
-    }
-    
-    &__badge {
-      background-color: rgba(214, 245, 214, 0.2);
-    }
+    background-color: rgba(255, 255, 255, 0.1);
     
     &__text {
       color: #fff;
     }
     
-    &__play-button {
-      background-color: #4287f5;
+    &__footer {
+      color: rgba(255, 255, 255, 0.6);
+    }
+    
+    &__badge {
+      background-color: #56a8fc;
+      
+      &--cached {
+        background-color: #47b143;
+      }
+    }
+    
+    &__refresh-button {
+      background-color: rgba(255, 255, 255, 0.1);
       color: #fff;
       
       &:hover:not(:disabled) {
-        background-color: #5495f7;
-      }
-      
-      &.playing {
-        background-color: #3776db;
+        background-color: rgba(255, 255, 255, 0.2);
       }
     }
     
-    &__loading {
-      color: rgba(255, 255, 255, 0.45);
+    &__retry-button {
+      background-color: #fb5c56;
       
-      .loading-spinner {
-        border-color: rgba(255, 255, 255, 0.1);
-        border-top-color: #56a8fc;
+      &:hover:not(:disabled) {
+        background-color: #e85249;
       }
     }
     
-    &__no-audio, &__no-audio-icon {
-      color: rgba(255, 255, 255, 0.65);
-      background-color: rgba(255, 255, 255, 0.08);
+    &__play-button {
+      background-color: #56a8fc;
+      
+      &:hover {
+        background-color: #07f;
+      }
     }
     
     &__anki-ready {
-      background-color: rgba(255, 229, 143, 0.2);
-      color: #ffe58f;
+      background-color: rgba(255, 255, 255, 0.45);
     }
     
-    &__footer {
-      color: #999;
+    &__no-audio-icon {
+      background-color: #fb5c56;
+    }
+    
+    &__no-audio {
+      color: #fb5c56;
     }
   }
 } 
