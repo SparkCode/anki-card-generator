@@ -23,13 +23,9 @@ const getPromptText = (word, context = '', nativeLanguage = 'Russian', englishLe
   return `
   i'm learning english with program Anki for memory words
 
-Include the following pronunciation: ${pronunciationInfo && (pronunciationInfo.usPronunciation || pronunciationInfo.ukPronunciation) ? 
-  `US ${pronunciationInfo.usPronunciation || ''} UK ${pronunciationInfo.ukPronunciation || ''}` : 
-  'Add appropriate pronunciation'}
-
 i have ${level} level of english, so try to use vocabulary from ${level}  
 
-when you do anki card do as similar pattern as possible (at top side sentence and word i learn in bold, at bottom side sentence and word replaced with % sign and with difenition of this word in english and top three translation in ${languageName} (but popular enough, if less three is also ok), at bottom side the word have always be replaced with % sign)
+when you do anki card do as similar pattern as possible (at top side sentence and word i learn in bold (you have to add transcription of the word always), at bottom side sentence and word replaced with % sign and with difenition of this word in english and top three translation in ${languageName} (but popular enough, if less three is also ok), at bottom side the word have always be replaced with % sign)
 
 do sentence moderate short like 10 words or so and with most popular usage with this word (or with context i'll give you)
 
