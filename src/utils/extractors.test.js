@@ -77,4 +77,12 @@ I need to **test** /test/ if the microphone is working.
 ==front part==`;
     expect(extractAiExampleSentence(content)).toBe('I need to test if the microphone is working.');
   });
+  test('uk/us pronunciation', () => {
+    const content = `==front part==
+Don't worry about being **presumptuous** /prɪˈzʌmp.tʃuː.əs/ (US) /prɪˈzʌmp.tʃəs/ (UK). You don't have to tell anyone.
+
+*verb, general, technology*
+==front part==`;
+    expect(extractAiExampleSentence(content)).toBe("Don't worry about being presumptuous. You don't have to tell anyone.");
+  });
 }); 

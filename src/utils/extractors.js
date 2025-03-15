@@ -28,11 +28,11 @@ const extractAiExampleSentence = (cardContent) => {
   // 2. Clean up bold formatting (text between double asterisks)
   sentence = sentence.replace(/\*\*([^*]+)\*\*/g, '$1');
   
-  // 3. Clean up pronunciation notation (text between slashes)
-  sentence = sentence.replace(/\/[^/]+\//g, '');
+  // 3. Clean up pronunciation notation (text between slashes) including US/UK variants
+  sentence = sentence.replace(/\/[^/]+\/(\s*\([A-Z]+\))?\s*/g, '');
   
-  // 4. Remove any double spaces that might have been created
-  sentence = sentence.replace(/\s{2,}/g, ' ');
+  // 4. Remove any double spaces that might have been created and fix spacing around punctuation
+  sentence = sentence.replace(/\s{2,}/g, ' ').replace(/\s+([.,!?;:])/g, '$1');
   
   return sentence.trim();
 };
