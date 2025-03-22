@@ -57,8 +57,7 @@ write comments always in italic!!!
 
 always add line breaks between blocks 
 
-in backside all mentions of the word should be replaced with % sign
-
+keep in mind that sense: when the user see back side of the card, he have to guess word from the sentence, so the word should be replaced with % sign or just do not use the word in back side
 
 ===EXAMPLE===
 
