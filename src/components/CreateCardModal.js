@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import DeckSelector from './DeckSelector';
 import { addNote, testConnection, guiAddCards } from '../services/AnkiService';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/localStorage';
+import { generateDictDataKey } from '../App';
+import { extractAiExampleSentence } from '../utils/extractors';
 
 /**
  * Modal for creating a card in Anki
@@ -20,13 +22,37 @@ const CreateCardModal = ({ isOpen, onClose, cardContent, onSuccess, word }) => {
   const [error, setError] = useState('');
   const [connectionStatus, setConnectionStatus] = useState(null);
   const [allowDuplicates, setAllowDuplicates] = useState(false);
+  const [pronunciationInfo, setPronunciationInfo] = useState(null);
 
   // Check connection to Anki when modal opens
   React.useEffect(() => {
     if (isOpen) {
       checkAnkiConnection();
+      fetchPronunciationInfo();
     }
-  }, [isOpen]);
+  }, [isOpen, cardContent]);
+
+  // Extract pronunciation info from sentence-based data
+  const fetchPronunciationInfo = () => {
+    if (!cardContent) return;
+    
+    // Extract the example sentence from the card content
+    const exampleSentence = extractAiExampleSentence(cardContent);
+    if (!exampleSentence) return;
+    
+    // Look up pronunciation info using the sentence key
+    const dictKey = generateDictDataKey(exampleSentence);
+    const storedDictData = getLocalStorageItem(dictKey);
+    
+    if (storedDictData && storedDictData.pronunciationInfo) {
+      setPronunciationInfo({
+        ...storedDictData.pronunciationInfo,
+        ttsAudioFilename: storedDictData.ttsAudioFilename
+      });
+    } else {
+      setPronunciationInfo(null);
+    }
+  };
 
   const checkAnkiConnection = async () => {
     try {
@@ -67,18 +93,6 @@ const CreateCardModal = ({ isOpen, onClose, cardContent, onSuccess, word }) => {
         return;
       }
       
-      // Get pronunciation info and TTS audio if available
-      let pronunciationInfo = null;
-      if (word) {
-        const storedDictData = getLocalStorageItem(`dictData_${word}`);
-        if (storedDictData) {
-          pronunciationInfo = {
-            ...storedDictData.pronunciationInfo,
-            ttsAudioFilename: storedDictData.ttsAudioFilename
-          };
-        }
-      }
-      
       const noteId = await addNote(selectedDeck, cardContent, allowDuplicates, pronunciationInfo);
       
       if (onSuccess) {
@@ -110,18 +124,6 @@ const CreateCardModal = ({ isOpen, onClose, cardContent, onSuccess, word }) => {
         setError('Could not connect to Anki. Please make sure Anki is running and AnkiConnect is installed.');
         setIsCreating(false);
         return;
-      }
-      
-      // Get pronunciation info and TTS audio if available
-      let pronunciationInfo = null;
-      if (word) {
-        const storedDictData = getLocalStorageItem(`dictData_${word}`);
-        if (storedDictData) {
-          pronunciationInfo = {
-            ...storedDictData.pronunciationInfo,
-            ttsAudioFilename: storedDictData.ttsAudioFilename
-          };
-        }
       }
       
       await guiAddCards(selectedDeck, cardContent, allowDuplicates, pronunciationInfo);
@@ -187,7 +189,7 @@ const CreateCardModal = ({ isOpen, onClose, cardContent, onSuccess, word }) => {
             {word && (
               <div className="dictionary-info" style={{ margin: '10px 0', fontSize: '0.9rem', backgroundColor: '#f0fff0', padding: '8px', borderRadius: '4px' }}>
                 <p style={{ margin: '0 0 4px 0', fontWeight: 'bold' }}>Pronunciation Audio</p>
-                {getLocalStorageItem(`dictData_${word}`)?.pronunciationInfo ? (
+                {pronunciationInfo ? (
                   <p style={{ margin: '0' }}>✅ Audio pronunciation will be added to your Anki card automatically</p>
                 ) : (
                   <p style={{ margin: '0' }}>⚠️ No pronunciation data available for "{word}"</p>

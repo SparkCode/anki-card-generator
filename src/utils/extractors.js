@@ -23,7 +23,13 @@ const extractAiExampleSentence = (cardContent) => {
     const lines = frontContent.split('\n');
     sentence = lines[0].trim();
   } else {
-    // Treat the input as a plain example sentence
+    // Check if this looks like a card format by seeing if it contains markers
+    // If it seems like it should have markers but doesn't have complete ones, return null
+    if (cardContent.includes('==front part==') || cardContent.includes('==back part==')) {
+      return null;
+    }
+    
+    // Otherwise treat the input as a plain example sentence
     sentence = cardContent.trim();
   }
   
@@ -38,7 +44,10 @@ const extractAiExampleSentence = (cardContent) => {
   // 3. Clean up pronunciation notation (text between slashes) including US/UK variants
   sentence = sentence.replace(/\/[^/]+\/(\s*\([A-Z]+\))?\s*/g, '');
   
-  // 4. Remove any double spaces that might have been created and fix spacing around punctuation
+  // 4. Also clean up pronunciation notation in square brackets [like this]
+  sentence = sentence.replace(/\[[^\]]+\](\s*\([A-Z]+\))?\s*/g, '');
+  
+  // 5. Remove any double spaces that might have been created and fix spacing around punctuation
   sentence = sentence.replace(/\s{2,}/g, ' ').replace(/\s+([.,!?;:])/g, '$1');
   
   return sentence.trim();

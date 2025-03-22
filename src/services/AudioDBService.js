@@ -31,13 +31,14 @@ class AudioDBService {
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
         
-        // Create the audio files store with cardId as key path
+        // Create the audio files store with key as key path
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const store = db.createObjectStore(STORE_NAME, { keyPath: 'key' });
           
           // Create useful indexes
           store.createIndex('cardId', 'cardId', { unique: false });
           store.createIndex('createdAt', 'createdAt', { unique: false });
+          store.createIndex('text', 'text', { unique: false });
         }
       };
 
@@ -56,24 +57,21 @@ class AudioDBService {
   }
 
   /**
-   * Generate a unique storage key for a TTS audio
-   * @param {string} cardId - Unique ID of the card
-   * @param {string} text - Text that was converted to speech (used to invalidate cache when text changes)
-   * @returns {string} A unique key for storage
+   * Generate a storage key for a TTS audio based on the sentence
+   * @param {string} cardId - Unique ID of the card (no longer used as primary key)
+   * @param {string} text - Text that was converted to speech (used as the primary key)
+   * @returns {string} A key for storage based on the sentence
    */
   generateKey(cardId, text) {
-    // Create a hash of the text to serve as part of the key
-    // This ensures new audio is generated if the text changes
-    let hash = 0;
-    if (text.length === 0) return cardId;
-    
-    for (let i = 0; i < text.length; i++) {
-      const char = text.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
+    // Use the sentence text directly as the key
+    // Normalize it by trimming whitespace and converting to lowercase
+    if (!text || text.trim().length === 0) {
+      // Fallback to cardId as before if text is empty
+      return cardId;
     }
     
-    return `${cardId}_${hash}`;
+    // Clean and normalize the text for use as a key
+    return text.trim().toLowerCase();
   }
 
   /**
@@ -112,8 +110,8 @@ class AudioDBService {
 
   /**
    * Get audio data from the IndexedDB cache
-   * @param {string} cardId - Unique ID of the card
-   * @param {string} text - Text that was converted to speech
+   * @param {string} cardId - Unique ID of the card (not used for lookup)
+   * @param {string} text - Text that was converted to speech (used as key)
    * @returns {Promise<Blob|null>} Audio blob if found, null otherwise
    */
   async getAudio(cardId, text) {
@@ -141,8 +139,8 @@ class AudioDBService {
 
   /**
    * Delete audio data from the IndexedDB cache
-   * @param {string} cardId - Unique ID of the card
-   * @param {string} text - Text that was converted to speech
+   * @param {string} cardId - Unique ID of the card (not used for lookup)
+   * @param {string} text - Text that was converted to speech (used as key)
    * @returns {Promise<boolean>} True if deletion was successful
    */
   async deleteAudio(cardId, text) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ExampleSentenceAudio from './ExampleSentenceAudio';
 import { getLocalStorageItem } from '../utils/localStorage';
+import { generateDictDataKey } from '../App';
 // Basic resets and global styles
 import '../styles/reset.css';
 // Import global animations first
@@ -15,8 +16,9 @@ import './ExampleSentenceAudio.scss';
  * 
  * @param {Object} props Component props
  * @param {string} props.word The word for which to display example sentence audio
+ * @param {string} props.sentence Optional direct sentence to play audio for
  */
-const StandaloneExampleAudio = ({ word }) => {
+const StandaloneExampleAudio = ({ word, sentence }) => {
   const [loading, setLoading] = useState(true);
   const [exampleSentence, setExampleSentence] = useState('');
   const [ttsAudioUrl, setTtsAudioUrl] = useState(null);
@@ -24,59 +26,63 @@ const StandaloneExampleAudio = ({ word }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Reset state when word changes
+    // Reset state when word or sentence changes
     setLoading(true);
     setError(null);
     setExampleSentence('');
     setTtsAudioUrl(null);
     setTtsAudioFilename(null);
     
-    if (!word) {
+    if (!word && !sentence) {
       setLoading(false);
-      setError('No word provided');
+      setError('No word or sentence provided');
       return;
     }
 
     try {
-      // Look up stored data for this word
-      const storedDictData = getLocalStorageItem(`dictData_${word.toLowerCase()}`);
-      
-      if (!storedDictData) {
-        setLoading(false);
-        setError(`No audio data found for "${word}"`);
-        return;
-      }
-      
-      // Set example sentence data
-      setExampleSentence(storedDictData.exampleSentence || '');
-      
-      // Handle audio URL carefully
-      if (storedDictData.ttsPreviewUrl) {
-        try {
-          // Validate URL
-          new URL(storedDictData.ttsPreviewUrl);
-          setTtsAudioUrl(storedDictData.ttsPreviewUrl);
-        } catch (urlError) {
-          console.warn('Invalid audio URL:', urlError);
-          setTtsAudioUrl(null);
+      // If direct sentence is provided, use it to look up audio data
+      if (sentence) {
+        const dictKey = generateDictDataKey(sentence);
+        const storedDictData = getLocalStorageItem(dictKey);
+        
+        if (storedDictData) {
+          setExampleSentence(storedDictData.exampleSentence || sentence);
+          setTtsAudioFilename(storedDictData.ttsAudioFilename || null);
+          
+          // Handle audio URL carefully
+          if (storedDictData.ttsPreviewUrl) {
+            try {
+              // Validate URL
+              new URL(storedDictData.ttsPreviewUrl);
+              setTtsAudioUrl(storedDictData.ttsPreviewUrl);
+            } catch (urlError) {
+              console.warn('Invalid audio URL:', urlError);
+              setTtsAudioUrl(null);
+            }
+          }
+          
+          setLoading(false);
+          return;
         }
       }
       
-      setTtsAudioFilename(storedDictData.ttsAudioFilename || null);
+      // If no sentence provided or no data found for the sentence,
+      // we can't look up audio data without findDictDataByWord, so show error
       setLoading(false);
+      setError(`No audio data found for "${sentence || word}"`);
     } catch (error) {
       console.error('Error loading example audio:', error);
       setError(`Error loading audio: ${error.message}`);
       setLoading(false);
     }
-  }, [word]);
+  }, [word, sentence]);
 
   if (loading) {
     return (
       <div className="standalone-example-audio">
         <div className="standalone-example-audio__loading">
           <div className="loading-spinner"></div>
-          <p>Loading audio for "{word}"...</p>
+          <p>Loading audio for "{sentence || word}"...</p>
         </div>
       </div>
     );
@@ -96,7 +102,7 @@ const StandaloneExampleAudio = ({ word }) => {
     return (
       <div className="standalone-example-audio">
         <div className="standalone-example-audio__not-found">
-          <p>No example sentence available for "{word}"</p>
+          <p>No example sentence available for "{sentence || word}"</p>
         </div>
       </div>
     );
@@ -105,7 +111,7 @@ const StandaloneExampleAudio = ({ word }) => {
   return (
     <div className="standalone-example-audio">
       <header className="standalone-example-audio__header">
-        <h2 className="standalone-example-audio__title">Example for "{word}"</h2>
+        <h2 className="standalone-example-audio__title">Example for "{word || 'this sentence'}"</h2>
       </header>
       
       <ExampleSentenceAudio 
