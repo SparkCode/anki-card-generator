@@ -312,65 +312,6 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate, ttsResu
           audioUrl={audioUrl}
           audioFilename={audioFilename}
           cardId={currentWord}
-          onRefresh={async () => {
-            try {
-              // Need the example sentence to regenerate audio
-              if (!exampleSentence) {
-                throw new Error('No example sentence found for regeneration');
-              }
-              
-              // Clear the current audio URL to show loading state
-              setTtsPreviewUrl(null);
-              
-              // Import the TTS generation function dynamically to avoid circular dependencies
-              const { generateExampleAudio } = await import('../services/TtsService');
-              
-              // Clean the sentence for TTS by removing pronunciation guides and formatting
-              const cleanExampleSentence = extractAiExampleSentence(
-                `==front part==
-                ${exampleSentence}
-                ==front part==`
-              );
-              
-              const targetSentence = cleanExampleSentence || exampleSentence;
-              
-              // Generate new audio
-              const { filename, audioData } = await generateExampleAudio(currentWord, targetSentence);
-              
-              // Create a blob URL from the audio data
-              const blob = new Blob([audioData], { type: 'audio/mp3' });
-              const newAudioUrl = URL.createObjectURL(blob);
-              
-              // Update the state
-              setTtsAudioFilename(filename);
-              setTtsPreviewUrl(newAudioUrl);
-              
-              // Save the updated data to localStorage using the sentence as the key
-              const dictKey = generateDictDataKey(exampleSentence);
-              // Check if there's existing data for this sentence
-              const existingData = getLocalStorageItem(dictKey) || {};
-              
-              const updatedDictData = {
-                ...existingData,
-                ttsAudioFilename: filename,
-                exampleSentence,
-                word: currentWord,
-                pronunciationInfo: {
-                  ...(existingData.pronunciationInfo || {}),
-                  ttsGeneratedSuccessfully: true
-                },
-                timestamp: Date.now()
-              };
-              
-              // Save using setLocalStorageItem helper
-              setLocalStorageItem(dictKey, updatedDictData);
-              
-              return newAudioUrl;
-            } catch (error) {
-              console.error('Failed to regenerate TTS audio:', error);
-              throw error;
-            }
-          }}
         />
       )}
       
@@ -446,9 +387,9 @@ const AutosizeTextarea = ({ value, onChange, placeholder }) => {
 
 // Add the PronunciationPreview component
 const PronunciationPreview = ({ word, sentence }) => {
-  const [audioUrl, setAudioUrl] = useState(null);
-  const [pronunciation, setPronunciation] = useState(null);
+  const [pronunciationInfo, setPronunciationInfo] = useState({});
   const [loading, setLoading] = useState(true);
+  const [audioPlaying, setAudioPlaying] = useState(null);
   
   useEffect(() => {
     if (!word) {
@@ -462,25 +403,33 @@ const PronunciationPreview = ({ word, sentence }) => {
       const storedDictData = getLocalStorageItem(dictKey);
       
       if (storedDictData?.pronunciationInfo) {
-        const { usAudioUrl, usPronunciation } = storedDictData.pronunciationInfo;
-        setAudioUrl(usAudioUrl);
-        setPronunciation(usPronunciation);
+        setPronunciationInfo(storedDictData.pronunciationInfo);
       }
     }
     
     setLoading(false);
   }, [word, sentence]);
   
-  const playAudio = (url) => {
+  const playAudio = (url, variant) => {
     if (!url) return;
     
+    setAudioPlaying(variant);
+    
     const audio = new Audio(url);
-    audio.play().catch(err => {
-      console.error('Failed to play audio:', err);
-    });
+    audio.play()
+      .then(() => {
+        // Add an event listener to reset playing state when audio ends
+        audio.addEventListener('ended', () => {
+          setAudioPlaying(null);
+        });
+      })
+      .catch(err => {
+        console.error('Failed to play audio:', err);
+        setAudioPlaying(null);
+      });
   };
   
-  if (loading || !audioUrl || !pronunciation) {
+  if (loading || (!pronunciationInfo.usAudioUrl && !pronunciationInfo.ukAudioUrl)) {
     return null;
   }
   
@@ -497,23 +446,47 @@ const PronunciationPreview = ({ word, sentence }) => {
       <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>Pronunciation for "{word}":</div>
       
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button 
-            onClick={() => playAudio(audioUrl)}
-            style={{
-              padding: '4px 8px',
-              backgroundColor: '#e0e0e0',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            🇺🇸 Play
-          </button>
-          {pronunciation && (
-            <span>{pronunciation}</span>
-          )}
-        </div>
+        {pronunciationInfo.usAudioUrl && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button 
+              onClick={() => playAudio(pronunciationInfo.usAudioUrl, 'us')}
+              disabled={audioPlaying !== null}
+              style={{
+                padding: '4px 8px',
+                backgroundColor: audioPlaying === 'us' ? '#ccc' : '#e0e0e0',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: audioPlaying === null ? 'pointer' : 'not-allowed'
+              }}
+            >
+              🇺🇸 {audioPlaying === 'us' ? 'Playing...' : 'Play'}
+            </button>
+            {pronunciationInfo.usPronunciation && (
+              <span>{pronunciationInfo.usPronunciation}</span>
+            )}
+          </div>
+        )}
+        
+        {pronunciationInfo.ukAudioUrl && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button 
+              onClick={() => playAudio(pronunciationInfo.ukAudioUrl, 'uk')}
+              disabled={audioPlaying !== null}
+              style={{
+                padding: '4px 8px',
+                backgroundColor: audioPlaying === 'uk' ? '#ccc' : '#e0e0e0',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: audioPlaying === null ? 'pointer' : 'not-allowed'
+              }}
+            >
+              🇬🇧 {audioPlaying === 'uk' ? 'Playing...' : 'Play'}
+            </button>
+            {pronunciationInfo.ukPronunciation && (
+              <span>{pronunciationInfo.ukPronunciation}</span>
+            )}
+          </div>
+        )}
       </div>
       
       <div style={{ fontSize: '0.8em', color: '#666', marginTop: '5px' }}>

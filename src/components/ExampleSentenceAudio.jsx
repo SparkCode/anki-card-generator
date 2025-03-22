@@ -18,21 +18,18 @@ import './ExampleSentenceAudio.scss';
  * @param {string} props.audioFilename Filename of the audio in Anki (for reference)
  * @param {boolean} props.loading Whether audio is currently loading
  * @param {string} props.cardId Unique identifier for the card
- * @param {Function} props.onRefresh Optional callback to regenerate audio when refresh button is clicked
  */
 const ExampleSentenceAudio = ({ 
   sentence, 
   audioUrl, 
   audioFilename,
   loading = false,
-  cardId,
-  onRefresh
+  cardId
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioError, setAudioError] = useState(false);
   // Initialize without audioUrl - we'll validate it first
   const [cachedAudioUrl, setCachedAudioUrl] = useState(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFetchingFromAnki, setIsFetchingFromAnki] = useState(false);
   const audioRef = useRef(null);
 
@@ -61,22 +58,12 @@ const ExampleSentenceAudio = ({
           setAudioError(false); // Clear error since we have valid cached audio
           console.log('Using cached TTS audio from IndexedDB');
         } else if (audioUrl) {
-          // If audioUrl is a blob URL, validate it before using
+          // If audioUrl is a blob URL, just use it directly
           if (audioUrl.startsWith('blob:')) {
-            try {
-              const response = await fetch(audioUrl, { method: 'HEAD' });
-              if (response.ok) {
-                setCachedAudioUrl(audioUrl);
-                setAudioError(false);
-                cacheAudioFromUrl(audioUrl);
-              } else {
-                console.log('Blob URL is invalid (HEAD check)');
-                setAudioError(true);
-              }
-            } catch (error) {
-              console.log('Blob URL is invalid, cannot fetch:', error);
-              setAudioError(true);
-            }
+            setCachedAudioUrl(audioUrl);
+            setAudioError(false);
+            // We'll let the audio element's error event handle any invalid blob URLs
+            console.log('Using provided blob URL directly');
           } else {
             // Regular URL - assume it's valid
             setCachedAudioUrl(audioUrl);
@@ -186,40 +173,6 @@ const ExampleSentenceAudio = ({
     setIsPlaying(false);
   };
 
-  const handleRefresh = async () => {
-    // Only proceed if there's a refresh callback
-    if (!onRefresh) return;
-
-    setIsRefreshing(true);
-    setAudioError(false);
-
-    try {
-      // If we have cached audio, let's remove it first
-      if (cardId && sentence) {
-        await audioDB.deleteAudio(cardId, sentence);
-        
-        // Clean up previous object URL
-        if (cachedAudioUrl && cachedAudioUrl.startsWith('blob:')) {
-          URL.revokeObjectURL(cachedAudioUrl);
-          setCachedAudioUrl(null);
-        }
-      }
-
-      // Call the refresh callback to generate new audio
-      await onRefresh();
-    } catch (error) {
-      console.error('Error refreshing audio:', error);
-      setAudioError(true);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  const getRetryMessage = () => {
-    if (isRefreshing) return "Regenerating...";
-    return "Retry 🔄";
-  };
-
   // Function to play audio from Anki
   const playAudioFromAnki = async () => {
     if (!audioFilename) return;
@@ -275,22 +228,13 @@ const ExampleSentenceAudio = ({
         {cachedAudioUrl && cachedAudioUrl !== audioUrl && (
           <div className="example-sentence-audio__badge example-sentence-audio__badge--cached">Cached</div>
         )}
-        {onRefresh && (
-          <button 
-            className="example-sentence-audio__refresh-button" 
-            onClick={handleRefresh}
-            disabled={isRefreshing || loading}
-          >
-            {getRetryMessage()}
-          </button>
-        )}
       </div>
 
       <div className="example-sentence-audio__content">
-        {loading || isRefreshing ? (
+        {loading ? (
           <div className="example-sentence-audio__loading">
             <span className="loading-spinner"></span>
-            <span>{isRefreshing ? "Regenerating audio..." : "Generating audio..."}</span>
+            <span>Generating audio...</span>
           </div>
         ) : audioError ? (
           <div className="example-sentence-audio__row">

@@ -55,20 +55,14 @@ export const extractPronunciationInfo = (dictionaryData) => {
   // Find US pronunciation
   const usPronunciationData = dictionaryData.pronunciation.find(p => p.lang === 'us');
   if (usPronunciationData) {
-    // Use Google static audio URLs directly based on the word
-    usAudioUrl = dictionaryData.word ? 
-      `https://ssl.gstatic.com/dictionary/static/sounds/oxford/${dictionaryData.word.toLowerCase()}--_us_1.mp3` :
-      usPronunciationData.url;
+    usAudioUrl = usPronunciationData.url;
     usPronunciation = usPronunciationData.pron;
   }
 
   // Find UK pronunciation
   const ukPronunciationData = dictionaryData.pronunciation.find(p => p.lang === 'uk');
   if (ukPronunciationData) {
-    // Use Google static audio URLs directly based on the word
-    ukAudioUrl = dictionaryData.word ? 
-      `https://ssl.gstatic.com/dictionary/static/sounds/oxford/${dictionaryData.word.toLowerCase()}--_gb_1.mp3` :
-      ukPronunciationData.url;
+    ukAudioUrl = ukPronunciationData.url;
     ukPronunciation = ukPronunciationData.pron;
   }
 

@@ -182,7 +182,7 @@ function App() {
       const audioBlob = new Blob([audioData], { type: 'audio/mp3' });
       const audioBlobUrl = URL.createObjectURL(audioBlob);
       
-      console.log('TTS audio generated successfully as:', filename);
+      console.log('TTS audio generated successfully as:', filename, audioBlobUrl);
       
       // Store TTS data in localStorage to ensure CardDisplay can find it
       const dictKey = generateDictDataKey(sentence);
