@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import audioDB from '../services/AudioDBService';
 // Import service to fetch audio from Anki
 import { fetchMediaFile } from '../services/AnkiService';
@@ -32,6 +32,34 @@ const ExampleSentenceAudio = ({
   const [cachedAudioUrl, setCachedAudioUrl] = useState(null);
   const [isFetchingFromAnki, setIsFetchingFromAnki] = useState(false);
   const audioRef = useRef(null);
+
+  // Cache audio from URL when available
+  const cacheAudioFromUrl = useCallback(async (url) => {
+    if (!url || !cardId || !sentence) return;
+    
+    // Skip caching if it's a blob URL
+    if (url.startsWith('blob:')) {
+      console.log('Skipping caching for blob URL - these are temporary by nature');
+      return;
+    }
+    
+    try {
+      // Fetch the audio file
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch audio');
+      
+      // Get the blob from the response
+      const audioBlob = await response.blob();
+      
+      // Store in IndexedDB
+      await audioDB.storeAudio(cardId, sentence, audioBlob);
+      console.log('Cached TTS audio in IndexedDB');
+    } catch (error) {
+      console.error('Error caching audio:', error);
+      // Just log the error but don't set audioError
+      // This way if the audio URL is still valid we can play it
+    }
+  }, [cardId, sentence]);
 
   // Check if the audioUrl is valid (if it's a blob URL)
   useEffect(() => {
@@ -69,43 +97,28 @@ const ExampleSentenceAudio = ({
             setCachedAudioUrl(audioUrl);
             cacheAudioFromUrl(audioUrl);
           }
+        } else {
+          // No cached audio and no audioUrl
+          setCachedAudioUrl(null);
+          // Don't set audioError if we don't have any audio to play yet
+          // This will show the "audio will be available in Anki" message
+          setAudioError(false);
+          console.log('No audio available - will show placeholder');
         }
       } catch (error) {
         console.error('Error retrieving cached audio:', error);
+        setCachedAudioUrl(null);
         setAudioError(true);
       }
     }
     
     checkCachedAudio();
-  }, [cardId, sentence, audioUrl]);
+  }, [cardId, sentence, audioUrl, cacheAudioFromUrl]);
 
-  // Cache audio from URL when available
-  const cacheAudioFromUrl = async (url) => {
-    if (!url || !cardId || !sentence) return;
-    
-    // Skip caching if it's a blob URL
-    if (url.startsWith('blob:')) {
-      console.log('Skipping caching for blob URL - these are temporary by nature');
-      return;
-    }
-    
-    try {
-      // Fetch the audio file
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch audio');
-      
-      // Get the blob from the response
-      const audioBlob = await response.blob();
-      
-      // Store in IndexedDB
-      await audioDB.storeAudio(cardId, sentence, audioBlob);
-      console.log('Cached TTS audio in IndexedDB');
-    } catch (error) {
-      console.error('Error caching audio:', error);
-      // Just log the error but don't set audioError
-      // This way if the audio URL is still valid we can play it
-    }
-  };
+  useEffect(() => {
+    console.log('Cached audio URL:', cardId, sentence, cachedAudioUrl);
+    console.log('Audio URL:', cardId, sentence, audioUrl);
+  }, [cachedAudioUrl, audioUrl, cardId, sentence]);
 
   // Reset audio state when the URL changes
   useEffect(() => {
