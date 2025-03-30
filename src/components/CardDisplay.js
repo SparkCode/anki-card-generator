@@ -58,10 +58,20 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate, ttsResu
     if (frontText) {
       const boldWordMatch = frontText.match(/\*\*([^*]+)\*\*/);
       if (boldWordMatch) {
+        console.log('Extracted currentWord from frontText:', boldWordMatch[1].trim());
         setCurrentWord(boldWordMatch[1].trim());
+      } else {
+        console.log('No bold word found in frontText:', frontText.substring(0, 50));
       }
+    } else {
+      console.log('No frontText available for word extraction');
     }
   }, [frontText]);
+  
+  // Add a useEffect to monitor currentWord changes
+  useEffect(() => {
+    console.log('currentWord changed:', currentWord || 'none');
+  }, [currentWord]);
   
   // Update text states when content changes
   useEffect(() => {
@@ -97,8 +107,38 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate, ttsResu
     console.log('Looking up TTS data with key:', dictKey);
     
     let storedDictData = getLocalStorageItem(dictKey);
-    console.log('Lookup result:', storedDictData ? 'Found data' : 'No data found');
-    
+    console.log('Lookup result:', storedDictData ? 'Found data' : 'No data found', 
+      storedDictData ? {
+        hasAudio: !!storedDictData.ttsAudioFilename,
+        hasPronunciationInfo: !!storedDictData.pronunciationInfo,
+        pronunciationInfo: storedDictData.pronunciationInfo || 'none'
+      } : 'No data');
+
+    // Render debug for pronunciation info
+    if (!currentWord && aiExampleSentence) {
+      console.log('No currentWord but have example sentence, trying to extract word from sentence');
+      // Try to extract word from the example sentence
+      const wordMatch = aiExampleSentence.match(/\*\*([^*]+)\*\*/);
+      if (wordMatch) {
+        console.log('Found bold word in example sentence:', wordMatch[1].trim());
+        setCurrentWord(wordMatch[1].trim());
+      } else {
+        // Try other extraction methods
+        console.log('No bold word in example, trying fallback extraction');
+        // Example: extract first word or likely keyword
+        const words = aiExampleSentence.split(/\s+/);
+        if (words.length > 0) {
+          // Skip common first words like articles
+          const skipWords = ['the', 'a', 'an', 'this', 'that', 'these', 'those'];
+          const firstNonArticle = words.find(w => !skipWords.includes(w.toLowerCase()));
+          if (firstNonArticle) {
+            console.log('Using first non-article word as currentWord:', firstNonArticle);
+            setCurrentWord(firstNonArticle);
+          }
+        }
+      }
+    }
+
     if (storedDictData) {
       // Show audio component if we have a filename or if TTS was generated successfully
       const hasTts = !!storedDictData.ttsAudioFilename || 
@@ -269,6 +309,49 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate, ttsResu
       exampleSentence: exampleSentence?.substring(0, 30) + (exampleSentence?.length > 30 ? '...' : '')
     });
   }, [hasTtsAudio, ttsAudioFilename, ttsPreviewUrl, exampleSentence]);
+  
+  // Add this helper function before the return statement
+  const checkForMissingPronunciationInfo = (sentence) => {
+    if (!sentence) return;
+    
+    const dictKey = generateDictDataKey(sentence);
+    const storedData = getLocalStorageItem(dictKey);
+    
+    if (storedData && !storedData.pronunciationInfo) {
+      console.log('Found data without pronunciation info for:', sentence);
+      
+      // Try to get from word dictionary data
+      if (currentWord) {
+        const wordDictKey = `dict_${currentWord.toLowerCase().trim()}`;
+        const wordData = getLocalStorageItem(wordDictKey);
+        
+        if (wordData && wordData.pronunciationInfo) {
+          console.log('Found pronunciation info in word dictionary data, adding to sentence data');
+          
+          // Add pronunciation info to the sentence data
+          storedData.pronunciationInfo = wordData.pronunciationInfo;
+          setLocalStorageItem(dictKey, storedData);
+          
+          // Return true to indicate we fixed the data
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  };
+  
+  // Add this useEffect to check for missing pronunciation info when the component renders
+  useEffect(() => {
+    if (exampleSentence && currentWord) {
+      const fixed = checkForMissingPronunciationInfo(exampleSentence);
+      if (fixed) {
+        console.log('Fixed missing pronunciation info, refreshing component');
+        // Force a refresh of the component by updating a state
+        setHasTtsAudio(hasTtsAudio => hasTtsAudio);
+      }
+    }
+  }, [exampleSentence, currentWord]);
   
   if (isLoading) {
     return (
@@ -449,6 +532,11 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate, ttsResu
       </div>
 
       {/* Pronunciation Preview */}
+      {console.log('Should show pronunciation preview?', {
+        hasCurrentWord: !!currentWord, 
+        hasExampleSentence: !!exampleSentence,
+        willRender: !!(currentWord && exampleSentence)
+      })}
       {currentWord && exampleSentence && (
         <PronunciationPreview word={currentWord} sentence={exampleSentence} />
       )}
@@ -535,12 +623,15 @@ const AutosizeTextarea = ({ value, onChange, placeholder }) => {
 
 // Add the PronunciationPreview component
 const PronunciationPreview = ({ word, sentence }) => {
+  console.log('PronunciationPreview component rendering with:', { word, sentence: sentence?.substring(0, 30) + '...' });
   const [pronunciationInfo, setPronunciationInfo] = useState({});
   const [loading, setLoading] = useState(true);
   const [audioPlaying, setAudioPlaying] = useState(null);
   
   useEffect(() => {
+    console.log('PronunciationPreview useEffect with:', { word, hasSentence: !!sentence });
     if (!word) {
+      console.log('PronunciationPreview - No word provided, stopping');
       setLoading(false);
       return;
     }
@@ -550,13 +641,36 @@ const PronunciationPreview = ({ word, sentence }) => {
       const dictKey = generateDictDataKey(sentence);
       const storedDictData = getLocalStorageItem(dictKey);
       
+      console.log('PronunciationPreview - Dictionary lookup:', { 
+        dictKey,
+        foundData: !!storedDictData,
+        hasPronunciationInfo: !!storedDictData?.pronunciationInfo 
+      });
+      
       if (storedDictData?.pronunciationInfo) {
+        console.log('Found pronunciation info:', storedDictData.pronunciationInfo);
         setPronunciationInfo(storedDictData.pronunciationInfo);
+      } else {
+        console.log('No pronunciation info found in stored data');
       }
+    } else {
+      console.log('PronunciationPreview - No sentence provided');
     }
     
     setLoading(false);
   }, [word, sentence]);
+  
+  console.log('PronunciationPreview - Final state:', { 
+    loading, 
+    hasUsAudio: !!pronunciationInfo.usAudioUrl, 
+    hasUkAudio: !!pronunciationInfo.ukAudioUrl 
+  });
+  
+  if (loading || (!pronunciationInfo.usAudioUrl && !pronunciationInfo.ukAudioUrl)) {
+    console.log('PronunciationPreview - Not rendering due to:', 
+      loading ? 'still loading' : 'no audio URLs available');
+    return null;
+  }
   
   const playAudio = (url, variant) => {
     if (!url) return;
@@ -576,10 +690,6 @@ const PronunciationPreview = ({ word, sentence }) => {
         setAudioPlaying(null);
       });
   };
-  
-  if (loading || (!pronunciationInfo.usAudioUrl && !pronunciationInfo.ukAudioUrl)) {
-    return null;
-  }
   
   return (
     <div className="pronunciation-preview" style={{ 
