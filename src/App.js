@@ -11,6 +11,7 @@ import { guiAddCards, getDecks, storeAudioData } from './services/AnkiService';
 import { fetchWordInfo, extractPronunciationInfo } from './services/DictionaryService';
 import { hasApiKey, addChatHistoryEntry, getApiKey, setLocalStorageItem, getLocalStorageItem } from './utils/localStorage';
 import { hasOpenAIApiKey, generateExampleAudio, setOpenAIApiKey } from './services/TtsService';
+import audioDB from './services/AudioDBService';
 import './App.css';
 const { extractAiExampleSentence } = require('./utils/extractors');
 
@@ -100,6 +101,15 @@ function App() {
     if (!hasApiKey()) {
       setApiSettingsModalOpen(true);
     }
+    
+    // Clean up old audio files (keep files from last 30 days)
+    audioDB.cleanupOldFiles(30)
+      .then(deletedCount => {
+        if (deletedCount > 0) {
+          console.log(`Cleaned up ${deletedCount} old audio files`);
+        }
+      })
+      .catch(err => console.error('Error cleaning up old audio files:', err));
   }, []);
 
   const handleApiSettingsSave = () => {
@@ -173,14 +183,18 @@ function App() {
     
     try {
       console.log('Generating TTS audio for:', sentence);
+      
       const { filename, audioData } = await generateExampleAudio(word, sentence);
       
       // Store in Anki
       await storeAudioData(audioData, filename);
       
-      // Create a blob URL for playback in the browser
+      // Create audio blob for playback
       const audioBlob = new Blob([audioData], { type: 'audio/mp3' });
       const audioBlobUrl = URL.createObjectURL(audioBlob);
+      
+      // Store in AudioDBService
+      await audioDB.storeAudio(word, sentence, audioBlob);
       
       console.log('TTS audio generated successfully as:', filename, audioBlobUrl);
       
@@ -201,7 +215,8 @@ function App() {
       return {
         filename,
         previewUrl: audioBlobUrl,
-        success: true
+        success: true,
+        fromCache: false
       };
     } catch (error) {
       console.error('Failed to generate TTS audio:', error);
@@ -251,7 +266,6 @@ function App() {
       }
       
       // Generate TTS audio if enabled
-      let ttsPreviewUrl = null;
       let attemptedTts = false;
       let ttsGeneratedSuccessfully = false;
       
@@ -262,7 +276,6 @@ function App() {
         
         if (ttsResult && ttsResult.success) {
           ttsAudioFilename = ttsResult.filename;
-          ttsPreviewUrl = ttsResult.previewUrl;
           ttsGeneratedSuccessfully = true;
         }
       }

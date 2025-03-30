@@ -1,324 +1,238 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import audioDB from '../services/AudioDBService';
-// Import service to fetch audio from Anki
-import { fetchMediaFile } from '../services/AnkiService';
-// Basic resets and global styles
-import '../styles/reset.css';
-// Import global animations
-import '../styles/animations.scss';
-// Component styles
+import React, { useState, useRef, useEffect } from 'react';
+import { getTtsForSentence } from '../utils/audioUtils';
 import './ExampleSentenceAudio.scss';
 
 /**
- * Standalone component for displaying example sentences with audio pronunciation
+ * Component for displaying example sentence with TTS audio playback
  * 
- * @param {Object} props Component props
- * @param {string} props.sentence The example sentence text
- * @param {string} props.audioUrl URL to the audio file for playback
- * @param {string} props.audioFilename Filename of the audio in Anki (for reference)
- * @param {boolean} props.loading Whether audio is currently loading
- * @param {string} props.cardId Unique identifier for the card
+ * @param {Object} props Component properties
+ * @param {string} props.sentence The example sentence to display
+ * @param {string} props.audioUrl URL to the audio file to play
+ * @param {boolean} props.isLoading Whether the audio is still loading
+ * @param {string} props.cardId Optional unique identifier for the card
+ * @param {string} props.audioFilename Optional filename of the audio file
  */
-const ExampleSentenceAudio = ({ 
-  sentence, 
-  audioUrl, 
-  audioFilename,
-  loading = false,
-  cardId
-}) => {
+const ExampleSentenceAudio = ({ sentence, audioUrl, isLoading, cardId, audioFilename }) => {
+  console.log('ExampleSentenceAudio props:', { 
+    sentence: sentence?.substring(0, 30) + (sentence?.length > 30 ? '...' : ''), 
+    audioUrl: audioUrl ? 'exists' : 'missing', 
+    isLoading, 
+    cardId,
+    audioFilename
+  });
+  
   const [isPlaying, setIsPlaying] = useState(false);
-  const [audioError, setAudioError] = useState(false);
-  // Initialize without audioUrl - we'll validate it first
-  const [cachedAudioUrl, setCachedAudioUrl] = useState(null);
-  const [isFetchingFromAnki, setIsFetchingFromAnki] = useState(false);
+  const [localAudioUrl, setLocalAudioUrl] = useState(audioUrl);
+  const [fallbackAttempted, setFallbackAttempted] = useState(false);
+  const [localLoading, setLocalLoading] = useState(isLoading);
   const audioRef = useRef(null);
 
-  // Cache audio from URL when available
-  const cacheAudioFromUrl = useCallback(async (url) => {
-    if (!url || !cardId || !sentence) return;
+  // Update localAudioUrl when audioUrl prop changes
+  useEffect(() => {
+    setLocalAudioUrl(audioUrl);
+    setFallbackAttempted(false);
+    setLocalLoading(isLoading);
+  }, [audioUrl, isLoading]);
+
+  useEffect(() => {
+    console.log('ExampleSentenceAudio mounted/updated with audioUrl:', audioUrl ? 'exists' : 'missing');
     
-    // Skip caching if it's a blob URL
-    if (url.startsWith('blob:')) {
-      console.log('Skipping caching for blob URL - these are temporary by nature');
+    // Cleanup function to stop audio when component unmounts
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+    };
+  }, []);
+  
+  useEffect(() => {
+    // Log when audioUrl changes
+    console.log('audioUrl changed:', { 
+      hasAudioUrl: !!audioUrl,
+      audioRefExists: !!audioRef.current
+    });
+    
+    // Verify the audio URL is valid
+    if (localAudioUrl) {
+      console.log('Testing if audio URL is valid and accessible...');
+      
+      const testAudio = new Audio();
+      
+      // Listen for errors
+      const handleError = async (e) => {
+        console.error('Test audio error:', e);
+        console.error('Audio URL is not valid or accessible:', localAudioUrl);
+        
+        // Try to regenerate if we have both sentence and cardId and haven't tried fallback yet
+        if (!fallbackAttempted && sentence && cardId && audioFilename) {
+          console.log('Attempting to regenerate audio URL for:', audioFilename);
+          setFallbackAttempted(true);
+          setLocalLoading(true); // Set loading state while regenerating
+          
+          try {
+            // Try to regenerate TTS
+            const result = await getTtsForSentence(cardId, sentence);
+            if (result.success) {
+              console.log('Successfully regenerated audio URL:', result.previewUrl);
+              setLocalAudioUrl(result.previewUrl);
+            } else {
+              console.error('Failed to regenerate audio:', result.error || 'Unknown error');
+            }
+          } catch (err) {
+            console.error('Error regenerating audio:', err);
+          } finally {
+            setLocalLoading(false); // Reset loading state when done
+          }
+        }
+      };
+      
+      // Listen for metadata loaded (success case)
+      const handleMetadata = () => {
+        console.log('Audio URL is valid and accessible:', localAudioUrl);
+        testAudio.removeEventListener('error', handleError);
+        testAudio.removeEventListener('loadedmetadata', handleMetadata);
+      };
+      
+      testAudio.addEventListener('error', handleError);
+      testAudio.addEventListener('loadedmetadata', handleMetadata);
+      
+      // Attempt to load the audio
+      testAudio.src = localAudioUrl;
+      testAudio.load();
+      
+      // Cleanup
+      return () => {
+        testAudio.removeEventListener('error', handleError);
+        testAudio.removeEventListener('loadedmetadata', handleMetadata);
+        testAudio.src = '';
+      };
+    }
+  }, [localAudioUrl, sentence, cardId, audioFilename, fallbackAttempted]);
+
+  // Attempt to regenerate audio if we have filename but no audioUrl
+  useEffect(() => {
+    if (!localAudioUrl && !fallbackAttempted && audioFilename && sentence && cardId) {
+      console.log('Have filename but no URL, attempting to regenerate audio:', {
+        audioFilename,
+        cardId,
+        sentenceStart: sentence.substring(0, 30) + (sentence.length > 30 ? '...' : '')
+      });
+      
+      const regenerateAudio = async () => {
+        setFallbackAttempted(true);
+        setLocalLoading(true);
+        
+        try {
+          console.log('Regenerating audio with getTtsForSentence...');
+          const result = await getTtsForSentence(cardId, sentence);
+          
+          if (result && result.success) {
+            console.log('Successfully regenerated audio, setting new URL:', result.previewUrl);
+            setLocalAudioUrl(result.previewUrl);
+          } else {
+            console.error('Failed to regenerate audio:', result?.error || 'Unknown error');
+          }
+        } catch (err) {
+          console.error('Error during audio regeneration:', err);
+        } finally {
+          setLocalLoading(false);
+        }
+      };
+      
+      regenerateAudio();
+    }
+  }, [localAudioUrl, fallbackAttempted, audioFilename, sentence, cardId]);
+
+  // Handle audio end event
+  const handleAudioEnd = () => {
+    console.log('Audio playback ended');
+    setIsPlaying(false);
+  };
+
+  // Handle play button click for direct audio URL
+  const handlePlayClick = () => {
+    console.log('Play button clicked, audioRef:', !!audioRef.current);
+    
+    if (!audioRef.current) {
+      console.error('Audio ref is null');
       return;
     }
     
-    try {
-      // Fetch the audio file
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch audio');
-      
-      // Get the blob from the response
-      const audioBlob = await response.blob();
-      
-      // Store in IndexedDB
-      await audioDB.storeAudio(cardId, sentence, audioBlob);
-      console.log('Cached TTS audio in IndexedDB');
-    } catch (error) {
-      console.error('Error caching audio:', error);
-      // Just log the error but don't set audioError
-      // This way if the audio URL is still valid we can play it
-    }
-  }, [cardId, sentence]);
-
-  // Check if the audioUrl is valid (if it's a blob URL)
-  useEffect(() => {
-    // Immediately mark as error if it's a blob URL
-    // We'll validate it in the next effect
-    if (audioUrl && audioUrl.startsWith('blob:')) {
-      setAudioError(true);
-    }
-  }, [audioUrl]);
-
-  // Check for cached audio when component mounts or when sentence/cardId changes
-  useEffect(() => {
-    async function checkCachedAudio() {
-      if (!cardId || !sentence) return;
-      
-      try {
-        // Attempt to get cached audio from IndexedDB
-        const cachedAudio = await audioDB.getAudio(cardId, sentence);
-        
-        if (cachedAudio) {
-          // Create object URL from the cached blob
-          const objectUrl = URL.createObjectURL(cachedAudio);
-          setCachedAudioUrl(objectUrl);
-          setAudioError(false); // Clear error since we have valid cached audio
-          console.log('Using cached TTS audio from IndexedDB');
-        } else if (audioUrl) {
-          // If audioUrl is a blob URL, just use it directly
-          if (audioUrl.startsWith('blob:')) {
-            setCachedAudioUrl(audioUrl);
-            setAudioError(false);
-            // We'll let the audio element's error event handle any invalid blob URLs
-            console.log('Using provided blob URL directly');
-          } else {
-            // Regular URL - assume it's valid
-            setCachedAudioUrl(audioUrl);
-            cacheAudioFromUrl(audioUrl);
-          }
-        } else {
-          // No cached audio and no audioUrl
-          setCachedAudioUrl(null);
-          // Don't set audioError if we don't have any audio to play yet
-          // This will show the "audio will be available in Anki" message
-          setAudioError(false);
-          console.log('No audio available - will show placeholder');
-        }
-      } catch (error) {
-        console.error('Error retrieving cached audio:', error);
-        setCachedAudioUrl(null);
-        setAudioError(true);
-      }
-    }
-    
-    checkCachedAudio();
-  }, [cardId, sentence, audioUrl, cacheAudioFromUrl]);
-
-  useEffect(() => {
-    console.log('Cached audio URL:', cardId, sentence, cachedAudioUrl);
-    console.log('Audio URL:', cardId, sentence, audioUrl);
-  }, [cachedAudioUrl, audioUrl, cardId, sentence]);
-
-  // Reset audio state when the URL changes
-  useEffect(() => {
-    setIsPlaying(false);
-    // Don't reset audioError - we handle this in the initial setup
-    
-    // Clean up previous audio element if it exists
-    return () => {
-      // Store current ref value to avoid the React warning
-      const audioElement = audioRef.current;
-      if (audioElement) {
-        try {
-          audioElement.pause();
-          audioElement.src = '';
-        } catch (e) {
-          console.error('Error cleaning up audio element:', e);
-        }
-      }
-      
-      // Clean up object URLs
-      if (cachedAudioUrl && cachedAudioUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(cachedAudioUrl);
-      }
-    };
-  }, [audioUrl]);
-
-  const handlePlayAudio = () => {
-    if (!cachedAudioUrl || !audioRef.current) return;
-    
     if (isPlaying) {
-      try {
-        audioRef.current.pause();
-      } catch (e) {
-        console.error('Error pausing audio:', e);
-        setIsPlaying(false);
-      }
-    } else {
-      try {
-        // Create new audio promise
-        const playPromise = audioRef.current.play();
-        
-        // Handle play promise rejection (common in browsers)
-        if (playPromise !== undefined) {
-          playPromise.catch(err => {
-            console.error('Failed to play audio:', err);
-            setIsPlaying(false);
-            setAudioError(true);
-          });
-        }
-      } catch (e) {
-        console.error('Error playing audio:', e);
-        setIsPlaying(false);
-        setAudioError(true);
-      }
-    }
-  };
-
-  const handleAudioEnded = () => {
-    setIsPlaying(false);
-  };
-  
-  const handleAudioError = (e) => {
-    console.error('Audio error:', e);
-    setAudioError(true);
-    setIsPlaying(false);
-  };
-
-  // Function to play audio from Anki
-  const playAudioFromAnki = async () => {
-    if (!audioFilename) return;
-    
-    try {
-      // Set loading state
-      setIsPlaying(true);
-      setIsFetchingFromAnki(true);
-      
-      // Fetch the audio file from Anki
-      const audioData = await fetchMediaFile(audioFilename);
-      
-      if (!audioData) {
-        throw new Error('Failed to fetch audio from Anki');
-      }
-      
-      // Create a blob URL for the audio
-      const blob = new Blob([audioData], { type: 'audio/mp3' });
-      const objectUrl = URL.createObjectURL(blob);
-      
-      // Save in state
-      setCachedAudioUrl(objectUrl);
-      setAudioError(false);
-      
-      // Store in IndexedDB for future use
-      await audioDB.storeAudio(cardId, sentence, blob);
-      
-      // Play the audio
-      if (audioRef.current) {
-        audioRef.current.src = objectUrl;
-        audioRef.current.play().catch(err => {
-          console.error('Failed to play audio:', err);
-          setAudioError(true);
-          setIsPlaying(false);
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching audio from Anki:', error);
-      setAudioError(true);
+      console.log('Pausing audio');
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
       setIsPlaying(false);
-    } finally {
-      setIsFetchingFromAnki(false);
+    } else {
+      console.log('Attempting to play audio from URL:', localAudioUrl);
+      audioRef.current.play().catch(error => {
+        console.error('Error playing audio:', error);
+        setIsPlaying(false);
+      });
+      setIsPlaying(true);
     }
   };
+
+  if (!sentence) {
+    console.log('No sentence provided, not rendering audio component');
+    return (
+      <div className="example-sentence-audio">
+        <div className="example-sentence-audio__no-audio">
+          No example sentence available
+        </div>
+      </div>
+    );
+  }
+
+  console.log('Rendering audio component with:', {
+    sentence: sentence?.substring(0, 30) + (sentence?.length > 30 ? '...' : ''),
+    hasAudioUrl: !!localAudioUrl,
+    isLoading: localLoading
+  });
 
   return (
     <div className="example-sentence-audio">
-      <div className="example-sentence-audio__header">
-        <h3 className="example-sentence-audio__title">📢 Sentence Audio:</h3>
-        {audioFilename && (
-          <div className="example-sentence-audio__badge">TTS</div>
-        )}
-        {cachedAudioUrl && cachedAudioUrl !== audioUrl && (
-          <div className="example-sentence-audio__badge example-sentence-audio__badge--cached">Cached</div>
-        )}
-      </div>
-
       <div className="example-sentence-audio__content">
-        {loading ? (
-          <div className="example-sentence-audio__loading">
-            <span className="loading-spinner"></span>
-            <span>Generating audio...</span>
-          </div>
-        ) : audioError ? (
-          <div className="example-sentence-audio__row">
-            {sentence && (
-              <p className="example-sentence-audio__text">"{sentence}"</p>
-            )}
-            <div className="example-sentence-audio__no-audio">
-              <span>Error loading audio</span>
+        <p className="example-sentence-audio__sentence">{sentence}</p>
+        
+        <div className="example-sentence-audio__controls">
+          {localLoading ? (
+            <div className="example-sentence-audio__loading-indicator">
+              <div className="loading-spinner"></div>
             </div>
-          </div>
-        ) : (
-          <div className="example-sentence-audio__row">
-            {/* Sentence text first */}
-            {sentence && (
-              <p className="example-sentence-audio__text">"{sentence}"</p>
-            )}
-            
-            {/* Audio controls at the end - simplified to only show play icon */}
-            {!audioError && cachedAudioUrl ? (
+          ) : localAudioUrl ? (
+            <>
               <button 
-                className={`example-sentence-audio__play-button ${isPlaying ? 'playing' : ''}`}
-                onClick={handlePlayAudio}
-                aria-label={isPlaying ? "Pause audio" : "Play audio"}
-                disabled={isPlaying}
+                className="example-sentence-audio__play-button"
+                onClick={handlePlayClick}
+                disabled={localLoading}
               >
-                {isPlaying ? "▶" : "▶"}
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {isPlaying ? (
+                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                  ) : (
+                    <path d="M8 5v14l11-7z" />
+                  )}
+                </svg>
               </button>
-            ) : audioFilename ? (
-              <button 
-                className={`example-sentence-audio__play-button ${isPlaying || isFetchingFromAnki ? 'playing' : ''}`}
-                onClick={playAudioFromAnki}
-                aria-label={isFetchingFromAnki ? "Loading from Anki..." : "Play audio from Anki"}
-                disabled={isPlaying || isFetchingFromAnki}
-              >
-                {isFetchingFromAnki ? "⌛" : "▶"}
-              </button>
-            ) : sentence ? (
-              <div className="example-sentence-audio__no-audio-icon" title="Audio will be available in Anki">
-                🔊
-                <span className="example-sentence-audio__anki-notice">(in Anki)</span>
-              </div>
-            ) : (
-              <div className="example-sentence-audio__no-audio-icon">
-                ⚠
-              </div>
-            )}
-            
-            <audio 
-              ref={audioRef}
-              src={!audioError ? cachedAudioUrl : null}
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
-              onEnded={handleAudioEnded}
-              onError={handleAudioError}
-              preload="metadata"
-            />
-          </div>
-        )}
-      </div>
-      
-      {(audioFilename || (!audioError && cachedAudioUrl)) && (
-        <div className="example-sentence-audio__footer">
-          {isPlaying ? 
-            "Playing audio..." : 
-            isFetchingFromAnki ?
-              "Fetching audio from Anki..." :
-              audioError ? 
-                "There was an error playing the audio, but it will be included in your Anki card" : 
-                "This example sentence audio is playable and will be added to your Anki card"}
+              <audio 
+                ref={audioRef}
+                src={localAudioUrl}
+                onEnded={handleAudioEnd}
+                preload="auto"
+                onLoadStart={() => console.log('Audio loading started')}
+                onCanPlay={() => console.log('Audio can play')}
+                onError={(e) => console.error('Audio loading error:', e)}
+              />
+            </>
+          ) : (
+            <div className="example-sentence-audio__no-audio-indicator">
+              {audioFilename ? `Audio file ${audioFilename} exists but URL is missing` : 'No audio available'}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

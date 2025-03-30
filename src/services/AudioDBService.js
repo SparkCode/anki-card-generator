@@ -75,37 +75,101 @@ class AudioDBService {
   }
 
   /**
-   * Store audio data in the IndexedDB cache
-   * @param {string} cardId - Unique ID of the card
-   * @param {string} text - Text that was converted to speech
-   * @param {Blob} audioBlob - Audio data to store
-   * @returns {Promise<string>} The key used to store the audio data
+   * Stores an audio blob in the database
+   * @param {string} word - The word associated with the audio
+   * @param {string} sentence - The sentence associated with the audio
+   * @param {Blob} audioBlob - The audio blob to store
+   * @returns {Promise<string|null>} - The filename or null if storage failed
    */
-  async storeAudio(cardId, text, audioBlob) {
-    await this.dbReady;
-    
-    const key = this.generateKey(cardId, text);
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction([STORE_NAME], 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
+  async storeAudio(word, sentence, audioBlob) {
+    try {
+      if (!word || !sentence || !audioBlob) {
+        console.error('Missing required parameters for storing audio');
+        return null;
+      }
+
+      // Verify the audioBlob is actually a Blob or File
+      if (!(audioBlob instanceof Blob)) {
+        console.error('audioBlob must be an instance of Blob');
+        return null;
+      }
+
+      const db = await this.openDB();
       
-      const record = {
-        key,
-        cardId,
-        text,
-        audioBlob,
-        createdAt: Date.now()
-      };
-      
-      const request = store.put(record);
-      
-      request.onsuccess = () => resolve(key);
-      request.onerror = (event) => {
-        console.error('Error storing audio in IndexedDB:', event.target.error);
-        reject(event.target.error);
-      };
-    });
+      // Use a Promise to properly handle the transaction
+      return new Promise((resolve, reject) => {
+        try {
+          const transaction = db.transaction(['audioStore'], 'readwrite');
+          const store = transaction.objectStore('audioStore');
+          
+          // Generate filename for the audio
+          const filename = `tts_${word.replace(/\s+/g, '_')}_${Date.now()}.mp3`;
+          
+          // Check if we already have an entry for this sentence
+          const sentenceIndex = store.index('sentenceIndex');
+          
+          // We need to use request pattern for IndexedDB operations
+          const getRequest = sentenceIndex.get(sentence);
+          
+          getRequest.onsuccess = (event) => {
+            const existingEntry = event.target.result;
+            let request;
+            
+            try {
+              if (existingEntry) {
+                // Update the existing entry
+                existingEntry.audioBlob = audioBlob;
+                existingEntry.filename = filename;
+                existingEntry.timestamp = Date.now();
+                request = store.put(existingEntry);
+              } else {
+                // Create a new entry - make sure to use a unique ID
+                const entry = {
+                  id: Date.now() + '-' + Math.random().toString(36).substring(2, 15),
+                  word,
+                  sentence,
+                  audioBlob,
+                  filename,
+                  timestamp: Date.now()
+                };
+                
+                request = store.add(entry);
+              }
+              
+              request.onsuccess = () => {
+                console.log(`Audio ${existingEntry ? 'updated' : 'stored'} for sentence:`, sentence);
+                resolve(filename);
+              };
+              
+              request.onerror = (err) => {
+                console.error('Error in IndexedDB operation:', err.target.error);
+                reject(err.target.error);
+              };
+            } catch (err) {
+              console.error('Error preparing data for IndexedDB:', err);
+              reject(err);
+            }
+          };
+          
+          getRequest.onerror = (err) => {
+            console.error('Error checking for existing entry:', err.target.error);
+            reject(err.target.error);
+          };
+          
+          // Handle transaction errors
+          transaction.onerror = (err) => {
+            console.error('Transaction error:', err.target.error);
+            reject(err.target.error);
+          };
+        } catch (err) {
+          console.error('Error setting up transaction:', err);
+          reject(err);
+        }
+      });
+    } catch (error) {
+      console.error('Error storing audio in DB:', error);
+      return null;
+    }
   }
 
   /**
@@ -219,6 +283,115 @@ class AudioDBService {
       };
       
       request.onerror = () => resolve(0);
+    });
+  }
+
+  /**
+   * Retrieves audio data for a specific sentence
+   * @param {string} sentence - The sentence to retrieve audio for
+   * @returns {Promise<Object|null>} - The audio data or null if not found
+   */
+  async getAudioForSentence(sentence) {
+    try {
+      if (!sentence || sentence.trim().length === 0) {
+        console.log('Empty sentence provided to getAudioForSentence');
+        return null;
+      }
+      
+      const db = await this.openDB();
+      
+      return new Promise((resolve, reject) => {
+        try {
+          const transaction = db.transaction(['audioStore'], 'readonly');
+          const store = transaction.objectStore('audioStore');
+          
+          // Use an index to search by sentence
+          const index = store.index('sentenceIndex');
+          const request = index.get(sentence);
+          
+          request.onsuccess = (event) => {
+            const result = event.target.result;
+            
+            if (!result) {
+              console.log('No audio found for sentence:', sentence);
+              resolve(null);
+              return;
+            }
+            
+            console.log('Found audio in database for sentence:', sentence);
+            resolve({
+              blob: result.audioBlob,
+              filename: result.filename || `tts_audio_${Date.now()}.mp3`,
+              word: result.word,
+              sentence: result.sentence
+            });
+          };
+          
+          request.onerror = (event) => {
+            console.error('Error getting audio from DB:', event.target.error);
+            reject(event.target.error);
+          };
+        } catch (error) {
+          console.error('Exception in getAudioForSentence transaction:', error);
+          reject(error);
+        }
+      });
+    } catch (error) {
+      console.error('Error in getAudioForSentence:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Opens the database connection
+   * @returns {Promise<IDBDatabase>} - The opened database
+   */
+  async openDB() {
+    return new Promise((resolve, reject) => {
+      try {
+        const request = indexedDB.open('AudioDB', 2);
+        
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          
+          console.log('Upgrading AudioDB database schema');
+          
+          // Create the audio store if it doesn't exist
+          if (!db.objectStoreNames.contains('audioStore')) {
+            console.log('Creating audioStore objectStore');
+            const audioStore = db.createObjectStore('audioStore', { keyPath: 'id' });
+            
+            // Create indexes for efficient retrieval
+            audioStore.createIndex('wordIndex', 'word', { unique: false });
+            audioStore.createIndex('sentenceIndex', 'sentence', { unique: true });
+            audioStore.createIndex('timestampIndex', 'timestamp', { unique: false });
+            
+            console.log('AudioDB indexes created');
+          } else {
+            // Check if we need to add the sentenceIndex
+            const transaction = event.target.transaction;
+            const audioStore = transaction.objectStore('audioStore');
+            
+            if (!audioStore.indexNames.contains('sentenceIndex')) {
+              console.log('Adding missing sentenceIndex to audioStore');
+              audioStore.createIndex('sentenceIndex', 'sentence', { unique: true });
+            }
+          }
+        };
+        
+        request.onsuccess = (event) => {
+          console.log('Successfully opened AudioDB database');
+          resolve(event.target.result);
+        };
+        
+        request.onerror = (event) => {
+          console.error('Failed to open audio database:', event.target.error);
+          reject(new Error('Failed to open audio database: ' + event.target.error));
+        };
+      } catch (error) {
+        console.error('Exception during openDB:', error);
+        reject(error);
+      }
     });
   }
 }

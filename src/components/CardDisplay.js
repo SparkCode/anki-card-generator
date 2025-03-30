@@ -6,6 +6,8 @@ import { getLocalStorageItem, setLocalStorageItem } from '../utils/localStorage'
 import { extractAiExampleSentence } from '../utils/extractors';
 import { generateDictDataKey } from '../App';
 import ExampleSentenceAudio from './ExampleSentenceAudio';
+import { getTtsResultFromAudioDB, getTtsForSentence } from '../utils/audioUtils';
+import audioDB from '../services/AudioDBService';
 // Basic resets and global styles
 import '../styles/reset.css';
 // Import global animations to ensure they're loaded before component styles
@@ -114,33 +116,159 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate, ttsResu
       setHasTtsAudio(hasTts);
       setTtsAudioFilename(storedDictData.ttsAudioFilename || null);
       
-      // Only use ttsPreviewUrl if it exists and we're in the same browser session
-      // Blob URLs aren't valid across sessions
-      setTtsPreviewUrl(storedDictData.ttsPreviewUrl || null);
+      // Check if we have a valid previewUrl
+      if (storedDictData.ttsPreviewUrl) {
+        console.log('Found ttsPreviewUrl in localStorage:', storedDictData.ttsPreviewUrl.substring(0, 50) + '...');
+        setTtsPreviewUrl(storedDictData.ttsPreviewUrl);
+      } else if (storedDictData.ttsAudioFilename) {
+        console.log('No previewUrl found but we have a filename, will try to get from AudioDB:', storedDictData.ttsAudioFilename);
+        
+        // We have a filename but no URL - try to get from AudioDB
+        const fetchAudioForFilename = async () => {
+          try {
+            // First check if we can get the audio based on the sentence
+            const audioData = await getTtsResultFromAudioDB(aiExampleSentence, audioDB);
+            
+            if (audioData && audioData.success) {
+              console.log('Found audio in AudioDB by sentence, setting previewUrl');
+              setTtsPreviewUrl(audioData.previewUrl);
+              return;
+            }
+            
+            // If that fails, try to regenerate with current word
+            if (currentWord) {
+              console.log('Trying to regenerate audio with currentWord:', currentWord);
+              const generatedResult = await getTtsForSentence(currentWord, aiExampleSentence);
+              
+              if (generatedResult && generatedResult.success) {
+                console.log('Successfully regenerated audio, setting previewUrl');
+                setTtsPreviewUrl(generatedResult.previewUrl);
+                
+                // Also update localStorage
+                storedDictData.ttsPreviewUrl = generatedResult.previewUrl;
+                setLocalStorageItem(dictKey, storedDictData);
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching audio for filename:', error);
+          }
+        };
+        
+        fetchAudioForFilename();
+      } else {
+        setTtsPreviewUrl(null);
+      }
+      
       setExampleSentence(storedDictData.exampleSentence || '');
       
-      console.log('TTS UI state:', {
+      console.log('TTS UI state after localStorage lookup:', {
         hasTts,
         ttsAudioFilename: storedDictData.ttsAudioFilename,
-        ttsPreviewUrl: storedDictData.ttsPreviewUrl,
+        ttsPreviewUrl: storedDictData.ttsPreviewUrl ? 'exists' : 'missing',
         exampleSentence: storedDictData.exampleSentence
       });
     } else {
-      console.log('No stored data found for sentence key, setting default TTS state');
-      setHasTtsAudio(false);
-      setTtsAudioFilename(null);
-      setTtsPreviewUrl(null);
-      setExampleSentence(aiExampleSentence);
+      // If no data in localStorage, try to find it in AudioDB
+      const checkAudioDB = async () => {
+        console.log('Checking AudioDB for audio for sentence:', aiExampleSentence);
+        
+        // First try to directly get from AudioDB
+        const ttsData = await getTtsResultFromAudioDB(aiExampleSentence, audioDB);
+        
+        console.log('AudioDB lookup result:', ttsData);
+        
+        if (ttsData && ttsData.success) {
+          console.log('Found audio in AudioDB, setting UI state');
+          setHasTtsAudio(true);
+          setTtsAudioFilename(ttsData.filename);
+          setTtsPreviewUrl(ttsData.previewUrl);
+          setExampleSentence(aiExampleSentence);
+          
+          // Also save to localStorage for future use
+          const dictKey = generateDictDataKey(aiExampleSentence);
+          setLocalStorageItem(dictKey, {
+            ttsAudioFilename: ttsData.filename,
+            exampleSentence: aiExampleSentence,
+            word: currentWord || '',
+            ttsPreviewUrl: ttsData.previewUrl,
+            pronunciationInfo: {
+              ttsGeneratedSuccessfully: true,
+              attemptedTts: true
+            },
+            timestamp: Date.now()
+          });
+          
+          console.log('TTS UI state after AudioDB lookup:', {
+            hasTts: true,
+            ttsAudioFilename: ttsData.filename,
+            ttsPreviewUrl: ttsData.previewUrl ? 'exists' : 'missing',
+            exampleSentence: aiExampleSentence
+          });
+        } else {
+          // If not found in AudioDB, try to generate using getTtsForSentence if we have the current word
+          if (currentWord) {
+            console.log('Attempting to generate TTS for example sentence with currentWord:', currentWord);
+            const generatedTts = await getTtsForSentence(currentWord, aiExampleSentence);
+            
+            console.log('TTS generation result:', generatedTts);
+            
+            if (generatedTts && generatedTts.success) {
+              console.log('TTS generation successful, setting UI state');
+              setHasTtsAudio(true);
+              setTtsAudioFilename(generatedTts.filename);
+              setTtsPreviewUrl(generatedTts.previewUrl);
+              
+              console.log('TTS UI state after generation:', {
+                hasTts: true,
+                ttsAudioFilename: generatedTts.filename,
+                ttsPreviewUrl: generatedTts.previewUrl ? 'exists' : 'missing',
+                exampleSentence: aiExampleSentence
+              });
+            } else {
+              console.log('TTS generation failed, resetting audio state');
+              setHasTtsAudio(false);
+              setTtsAudioFilename(null);
+              setTtsPreviewUrl(null);
+            }
+          } else {
+            console.log('No current word available for TTS generation');
+            setHasTtsAudio(false);
+            setTtsAudioFilename(null);
+            setTtsPreviewUrl(null);
+          }
+          setExampleSentence(aiExampleSentence);
+        }
+      };
+      
+      checkAudioDB();
     }
 
     // If we have a direct ttsResult prop, use it immediately
     if (ttsResult && ttsResult.success) {
+      console.log('Using direct ttsResult prop:', ttsResult);
       setHasTtsAudio(true);
       setTtsAudioFilename(ttsResult.filename);
       setTtsPreviewUrl(ttsResult.previewUrl);
       setExampleSentence(aiExampleSentence);
+      
+      console.log('TTS UI state after direct prop:', {
+        hasTts: true,
+        ttsAudioFilename: ttsResult.filename,
+        ttsPreviewUrl: ttsResult.previewUrl,
+        exampleSentence: aiExampleSentence
+      });
     }
   }, [content, currentWord, ttsResult]);
+  
+  // Add a new useEffect to log state changes
+  useEffect(() => {
+    console.log('Audio state changed:', {
+      hasTtsAudio,
+      ttsAudioFilename,
+      hasPreviewUrl: !!ttsPreviewUrl,
+      exampleSentence: exampleSentence?.substring(0, 30) + (exampleSentence?.length > 30 ? '...' : '')
+    });
+  }, [hasTtsAudio, ttsAudioFilename, ttsPreviewUrl, exampleSentence]);
   
   if (isLoading) {
     return (
@@ -237,6 +365,26 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate, ttsResu
   const audioFilename = ttsResult?.success ? ttsResult.filename : ttsAudioFilename;
   const audioUrl = ttsResult?.success ? ttsResult.previewUrl : ttsPreviewUrl;
   
+  console.log('Final audio component props:', {
+    shouldShowAudio,
+    audioFilename,
+    hasAudioUrl: !!audioUrl,
+    exampleSentence: exampleSentence?.substring(0, 30) + (exampleSentence?.length > 30 ? '...' : '')
+  });
+  
+  // Helper function to extract word from example sentence if currentWord is not available
+  const extractWordFromSentence = (sentence) => {
+    if (!sentence) return '';
+    
+    // Try to find a bolded word in the sentence (often the target word)
+    const boldMatch = sentence.match(/\*\*([^*]+)\*\*/);
+    if (boldMatch) return boldMatch[1].trim();
+    
+    // If no bold word, just take the first word as a fallback
+    const firstWord = sentence.trim().split(/\s+/)[0];
+    return firstWord || '';
+  };
+  
   return (
     <div className="card-display">
       <div className="card-content dual-view">
@@ -311,7 +459,7 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate, ttsResu
           sentence={exampleSentence}
           audioUrl={audioUrl}
           audioFilename={audioFilename}
-          cardId={currentWord}
+          cardId={currentWord || extractWordFromSentence(exampleSentence)}
         />
       )}
       
