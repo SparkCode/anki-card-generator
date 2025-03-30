@@ -88,12 +88,20 @@ export const saveChatHistory = (history) => {
  */
 export const addChatHistoryEntry = (entry) => {
   const history = getChatHistory();
-  history.unshift({
+  const newEntry = {
     ...entry,
     timestamp: new Date().toISOString(),
     id: Date.now().toString()
-  });
+  };
+  
+  history.unshift(newEntry);
   saveChatHistory(history);
+  
+  // Dispatch a custom event to notify components of the history update
+  const event = new CustomEvent('chatHistoryUpdated', { detail: newEntry });
+  window.dispatchEvent(event);
+  
+  return newEntry;
 };
 
 /**

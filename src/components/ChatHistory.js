@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getChatHistory, clearChatHistory, deleteChatHistoryEntry } from '../utils/localStorage';
+import './ChatHistory.css';
 
 /**
  * Component to display chat history of previous card generations
@@ -8,12 +9,67 @@ import { getChatHistory, clearChatHistory, deleteChatHistoryEntry } from '../uti
  */
 const ChatHistory = ({ onHistoryItemClick }) => {
   const [historyItems, setHistoryItems] = useState(getChatHistory());
+  const [newEntryId, setNewEntryId] = useState(null);
+  
+  // Reference to the history container for scrolling
+  const historyContainerRef = useRef(null);
+  
+  // Refresh history when the component is mounted and when entries are added
+  useEffect(() => {
+    // Function to update history items from localStorage
+    const refreshHistory = () => {
+      setHistoryItems(getChatHistory());
+    };
+    
+    // Handler for new history item event
+    const handleHistoryUpdated = (event) => {
+      refreshHistory();
+      // Mark the new entry to highlight it
+      if (event.detail && event.detail.id) {
+        setNewEntryId(event.detail.id);
+        // Remove the highlight after 3 seconds
+        setTimeout(() => {
+          setNewEntryId(null);
+        }, 3000);
+        
+        // Scroll to top of the history container
+        if (historyContainerRef.current) {
+          setTimeout(() => {
+            historyContainerRef.current.scrollTop = 0;
+          }, 100); // Slight delay to ensure DOM is updated
+        }
+      }
+    };
+    
+    // Set up event listener for storage changes
+    window.addEventListener('storage', refreshHistory);
+    
+    // Custom event for when a new history item is added
+    window.addEventListener('chatHistoryUpdated', handleHistoryUpdated);
+    
+    // Refresh on mount
+    refreshHistory();
+    
+    // Clean up event listeners
+    return () => {
+      window.removeEventListener('storage', refreshHistory);
+      window.removeEventListener('chatHistoryUpdated', handleHistoryUpdated);
+    };
+  }, []);
   
   if (!historyItems || historyItems.length === 0) {
     return (
       <div className="chat-history empty">
-        <h3>Chat History</h3>
-        <p className="no-history">No previous card generations found.</p>
+        <div className="history-header">
+          <h3>Chat History</h3>
+        </div>
+        <div className="empty-state">
+          <div className="empty-state-icon">📋</div>
+          <p className="no-history">No previous card generations found.</p>
+          <p className="empty-state-hint">
+            When you generate cards, they'll appear here for quick access.
+          </p>
+        </div>
       </div>
     );
   }
@@ -51,9 +107,9 @@ const ChatHistory = ({ onHistoryItemClick }) => {
   };
   
   return (
-    <div className="chat-history">
+    <div className="chat-history" ref={historyContainerRef}>
       <div className="history-header">
-        <h3>Chat History</h3>
+        <h3>Chat History <span className="history-count">({historyItems.length})</span></h3>
         <button 
           className="button text-button"
           onClick={handleClearHistory}
@@ -66,13 +122,20 @@ const ChatHistory = ({ onHistoryItemClick }) => {
         {historyItems.map((item) => (
           <li 
             key={item.id} 
-            className="history-item"
+            className={`history-item ${item.id === newEntryId ? 'history-item-new' : ''}`}
             onClick={() => onHistoryItemClick(item)}
           >
             <div className="history-item-word">{item.word}</div>
             <div className="history-item-meta">
               {item.deck && <span className="history-item-deck">{item.deck}</span>}
-              <span className="history-item-date">{formatDate(item.timestamp)}</span>
+              {item.context && item.context.length > 0 && (
+                <span className="history-item-context" title={item.context}>
+                  {item.context.length > 30 ? item.context.substring(0, 30) + '...' : item.context}
+                </span>
+              )}
+              <div className="history-item-details">
+                <span className="history-item-date">{formatDate(item.timestamp)}</span>
+              </div>
             </div>
             <button 
               className="history-item-delete"
