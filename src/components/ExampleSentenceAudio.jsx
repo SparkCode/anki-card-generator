@@ -25,35 +25,54 @@ const ExampleSentenceAudio = ({ sentence, audioUrl, isLoading, cardId, audioFile
   const [localAudioUrl, setLocalAudioUrl] = useState(audioUrl);
   const [fallbackAttempted, setFallbackAttempted] = useState(false);
   const [localLoading, setLocalLoading] = useState(isLoading);
+  const [retryCount, setRetryCount] = useState(0);
+  const [retryMessage, setRetryMessage] = useState('');
+  const maxRetryAttempts = 3;
   const audioRef = useRef(null);
+  const retryTimeoutRef = useRef(null);
 
   // Update localAudioUrl when audioUrl prop changes
   useEffect(() => {
     setLocalAudioUrl(audioUrl);
     setFallbackAttempted(false);
     setLocalLoading(isLoading);
+    setRetryCount(0);
+    setRetryMessage('');
   }, [audioUrl, isLoading]);
 
+  // Clean up any pending timeouts on unmount
   useEffect(() => {
-    console.log('ExampleSentenceAudio mounted/updated with audioUrl:', audioUrl ? 'exists' : 'missing');
-    
-    // Cleanup function to stop audio when component unmounts
     return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
       }
     };
   }, []);
-  
+
+  useEffect(() => {
+    console.log('ExampleSentenceAudio mounted/updated with audioUrl:', audioUrl ? 'exists' : 'missing');
+  }, [audioUrl]);
+
+  // Verify the audio URL is valid and handle automatic retry
   useEffect(() => {
     // Log when audioUrl changes
     console.log('audioUrl changed:', { 
-      hasAudioUrl: !!audioUrl,
-      audioRefExists: !!audioRef.current
+      hasAudioUrl: !!localAudioUrl,
+      audioRefExists: !!audioRef.current,
+      fallbackAttempted
     });
     
-    // Verify the audio URL is valid
+    // If we don't have a URL, ensure regeneration is attempted
+    if (!localAudioUrl && !fallbackAttempted && sentence && cardId) {
+      console.log('URL missing, should trigger regeneration in the other useEffect');
+      return;
+    }
+    
+    // Verify the audio URL is valid if we have one
     if (localAudioUrl) {
       console.log('Testing if audio URL is valid and accessible...');
       
@@ -64,32 +83,54 @@ const ExampleSentenceAudio = ({ sentence, audioUrl, isLoading, cardId, audioFile
         console.error('Test audio error:', e);
         console.error('Audio URL is not valid or accessible:', localAudioUrl);
         
-        // Try to regenerate if we have both sentence and cardId and haven't tried fallback yet
-        if (!fallbackAttempted && sentence && cardId && audioFilename) {
-          console.log('Attempting to regenerate audio URL for:', audioFilename);
-          setFallbackAttempted(true);
-          setLocalLoading(true); // Set loading state while regenerating
+        // Automatically retry if we have both sentence and cardId
+        if (sentence && cardId && retryCount < maxRetryAttempts) {
+          const nextRetry = retryCount + 1;
+          const delay = Math.min(1000 * Math.pow(2, retryCount), 10000); // Exponential backoff
           
-          try {
-            // Try to regenerate TTS
-            const result = await getTtsForSentence(cardId, sentence);
-            if (result.success) {
-              console.log('Successfully regenerated audio URL:', result.previewUrl);
-              setLocalAudioUrl(result.previewUrl);
-            } else {
-              console.error('Failed to regenerate audio:', result.error || 'Unknown error');
-            }
-          } catch (err) {
-            console.error('Error regenerating audio:', err);
-          } finally {
-            setLocalLoading(false); // Reset loading state when done
+          console.log(`Scheduling automatic retry attempt ${nextRetry}/${maxRetryAttempts} in ${delay}ms`);
+          setRetryMessage(`Retry attempt ${nextRetry}/${maxRetryAttempts} in ${delay/1000}s...`);
+          setRetryCount(nextRetry);
+          
+          // Clear any existing timeout
+          if (retryTimeoutRef.current) {
+            clearTimeout(retryTimeoutRef.current);
           }
+          
+          // Set a new timeout for the retry
+          retryTimeoutRef.current = setTimeout(async () => {
+            console.log(`Executing automatic retry attempt ${nextRetry}/${maxRetryAttempts}`);
+            setLocalLoading(true);
+            setRetryMessage(`Generating audio (attempt ${nextRetry}/${maxRetryAttempts})...`);
+            
+            try {
+              const result = await getTtsForSentence(cardId, sentence);
+              if (result && result.success) {
+                console.log('Automatic TTS regeneration successful:', result.previewUrl);
+                setLocalAudioUrl(result.previewUrl);
+                setRetryMessage('');
+              } else {
+                console.error('Automatic TTS regeneration failed:', result?.error || 'Unknown error');
+                setRetryMessage(`Retry failed. ${maxRetryAttempts - nextRetry} attempts remaining.`);
+              }
+            } catch (err) {
+              console.error('Error during automatic TTS regeneration:', err);
+              setRetryMessage(`Error: ${err.message}. ${maxRetryAttempts - nextRetry} attempts remaining.`);
+            } finally {
+              setLocalLoading(false);
+            }
+          }, delay);
+        } else if (retryCount >= maxRetryAttempts) {
+          console.log('Maximum retry attempts reached');
+          setRetryMessage('Maximum retry attempts reached. Try manual regeneration.');
         }
       };
       
       // Listen for metadata loaded (success case)
       const handleMetadata = () => {
         console.log('Audio URL is valid and accessible:', localAudioUrl);
+        setRetryMessage('');
+        setRetryCount(0);
         testAudio.removeEventListener('error', handleError);
         testAudio.removeEventListener('loadedmetadata', handleMetadata);
       };
@@ -106,15 +147,18 @@ const ExampleSentenceAudio = ({ sentence, audioUrl, isLoading, cardId, audioFile
         testAudio.removeEventListener('error', handleError);
         testAudio.removeEventListener('loadedmetadata', handleMetadata);
         testAudio.src = '';
+        if (retryTimeoutRef.current) {
+          clearTimeout(retryTimeoutRef.current);
+        }
       };
     }
-  }, [localAudioUrl, sentence, cardId, audioFilename, fallbackAttempted]);
+  }, [localAudioUrl, sentence, cardId, retryCount]);
 
-  // Attempt to regenerate audio if we have filename but no audioUrl
+  // Attempt to regenerate audio if we have sentence but no audioUrl
   useEffect(() => {
-    if (!localAudioUrl && !fallbackAttempted && audioFilename && sentence && cardId) {
-      console.log('Have filename but no URL, attempting to regenerate audio:', {
-        audioFilename,
+    if (!localAudioUrl && !fallbackAttempted && sentence && cardId) {
+      console.log('No audio URL available, attempting to generate audio:', {
+        audioFilename: audioFilename || 'none',
         cardId,
         sentenceStart: sentence.substring(0, 30) + (sentence.length > 30 ? '...' : '')
       });
@@ -122,6 +166,7 @@ const ExampleSentenceAudio = ({ sentence, audioUrl, isLoading, cardId, audioFile
       const regenerateAudio = async () => {
         setFallbackAttempted(true);
         setLocalLoading(true);
+        setRetryMessage('Generating audio...');
         
         try {
           console.log('Regenerating audio with getTtsForSentence...');
@@ -130,11 +175,18 @@ const ExampleSentenceAudio = ({ sentence, audioUrl, isLoading, cardId, audioFile
           if (result && result.success) {
             console.log('Successfully regenerated audio, setting new URL:', result.previewUrl);
             setLocalAudioUrl(result.previewUrl);
+            setRetryMessage('');
           } else {
             console.error('Failed to regenerate audio:', result?.error || 'Unknown error');
+            setRetryMessage('Initial generation failed. Starting retry sequence...');
+            // Reset fallbackAttempted to allow retry sequence to work
+            setFallbackAttempted(false);
           }
         } catch (err) {
           console.error('Error during audio regeneration:', err);
+          setRetryMessage(`Error: ${err.message}. Starting retry sequence...`);
+          // Reset fallbackAttempted to allow retry sequence to work
+          setFallbackAttempted(false);
         } finally {
           setLocalLoading(false);
         }
@@ -142,7 +194,49 @@ const ExampleSentenceAudio = ({ sentence, audioUrl, isLoading, cardId, audioFile
       
       regenerateAudio();
     }
-  }, [localAudioUrl, fallbackAttempted, audioFilename, sentence, cardId]);
+  }, [localAudioUrl, fallbackAttempted, sentence, cardId, audioFilename]);
+
+  // Add this initialization effect after all other useEffect hooks, just before the handleAudioEnd function
+  // Initialize generation immediately upon component mount if needed
+  useEffect(() => {
+    // If we have sentence and cardId but no audioUrl on first render, trigger generation right away
+    if (!audioUrl && sentence && cardId && !fallbackAttempted) {
+      console.log('Component mounted with no audioUrl, triggering immediate generation');
+      
+      const initiateGeneration = async () => {
+        setFallbackAttempted(true);
+        setLocalLoading(true);
+        setRetryMessage('Initializing audio generation...');
+        
+        try {
+          console.log('Initiating first-time audio generation with getTtsForSentence');
+          const result = await getTtsForSentence(cardId, sentence);
+          
+          if (result && result.success) {
+            console.log('Initial TTS generation successful:', result.previewUrl);
+            setLocalAudioUrl(result.previewUrl);
+            setRetryMessage('');
+          } else {
+            console.error('Initial TTS generation failed:', result?.error || 'Unknown error');
+            setRetryMessage('Initial generation failed. Starting retry sequence...');
+            // Reset fallbackAttempted to allow retry sequence to work
+            setFallbackAttempted(false);
+          }
+        } catch (err) {
+          console.error('Error during initial audio generation:', err);
+          setRetryMessage(`Error: ${err.message}. Starting retry sequence...`);
+          // Reset fallbackAttempted to allow retry sequence to work
+          setFallbackAttempted(false);
+        } finally {
+          setLocalLoading(false);
+        }
+      };
+      
+      initiateGeneration();
+    }
+  // Run only once on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handle audio end event
   const handleAudioEnd = () => {
@@ -188,7 +282,9 @@ const ExampleSentenceAudio = ({ sentence, audioUrl, isLoading, cardId, audioFile
   console.log('Rendering audio component with:', {
     sentence: sentence?.substring(0, 30) + (sentence?.length > 30 ? '...' : ''),
     hasAudioUrl: !!localAudioUrl,
-    isLoading: localLoading
+    isLoading: localLoading,
+    retryCount,
+    retryMessage
   });
 
   return (
@@ -200,6 +296,9 @@ const ExampleSentenceAudio = ({ sentence, audioUrl, isLoading, cardId, audioFile
           {localLoading ? (
             <div className="example-sentence-audio__loading-indicator">
               <div className="loading-spinner"></div>
+              {retryMessage && (
+                <span className="example-sentence-audio__status-message">{retryMessage}</span>
+              )}
             </div>
           ) : localAudioUrl ? (
             <>
@@ -228,7 +327,53 @@ const ExampleSentenceAudio = ({ sentence, audioUrl, isLoading, cardId, audioFile
             </>
           ) : (
             <div className="example-sentence-audio__no-audio-indicator">
-              {audioFilename ? `Audio file ${audioFilename} exists but URL is missing` : 'No audio available'}
+              {audioFilename ? (
+                <>
+                  <span>Audio file exists but needs to be regenerated</span>
+                  <small>Filename: {audioFilename}</small>
+                </>
+              ) : 'No audio available'}
+              
+              {retryMessage && (
+                <div className="example-sentence-audio__status-message">
+                  {retryMessage}
+                </div>
+              )}
+              
+              {sentence && cardId && (
+                <button 
+                  className="example-sentence-audio__retry-button"
+                  onClick={async () => {
+                    setLocalLoading(true);
+                    setRetryCount(0);
+                    setRetryMessage('Manually generating audio...');
+                    console.log('Manually retrying TTS generation for:', {
+                      cardId,
+                      sentencePreview: sentence.substring(0, 30) + (sentence.length > 30 ? '...' : '')
+                    });
+                    
+                    try {
+                      const result = await getTtsForSentence(cardId, sentence);
+                      if (result && result.success) {
+                        console.log('Manual TTS regeneration successful:', result);
+                        setLocalAudioUrl(result.previewUrl);
+                        setRetryMessage('');
+                      } else {
+                        console.error('Manual TTS regeneration failed:', result?.error || 'Unknown error');
+                        setRetryMessage('Manual generation failed. Please try again.');
+                      }
+                    } catch (err) {
+                      console.error('Error during manual TTS regeneration:', err);
+                      setRetryMessage(`Error: ${err.message}. Please try again.`);
+                    } finally {
+                      setLocalLoading(false);
+                    }
+                  }}
+                  disabled={localLoading}
+                >
+                  {localLoading ? 'Generating...' : audioFilename ? 'Regenerate Audio' : 'Generate Audio'}
+                </button>
+              )}
             </div>
           )}
         </div>

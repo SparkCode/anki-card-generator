@@ -55,22 +55,21 @@
   }
   
   &__retry-button {
-    margin-left: 8px;
-    background-color: #f33;
-    border: none;
-    border-radius: 6px;
-    padding: 4px 8px;
-    font-size: 12px;
-    color: #fff;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 14px;
     cursor: pointer;
-    transition: background-color 0.2s ease-in-out;
+    transition: background-color 0.2s ease;
+    margin-top: 8px;
     
     &:hover:not(:disabled) {
-      background-color: #e52e2e;
+      background-color: #e0e0e0;
     }
     
     &:disabled {
-      opacity: 0.5;
+      opacity: 0.6;
       cursor: not-allowed;
     }
   }
@@ -130,6 +129,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 10px;
     
     .loading-spinner {
       width: 20px;
@@ -139,6 +139,16 @@
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }
+  }
+  
+  &__status-message {
+    font-size: 12px;
+    color: #666;
+    font-style: italic;
+    max-width: 200px;
+    white-space: normal;
+    text-align: center;
+    animation: fade-in 0.3s ease-in-out;
   }
   
   &__anki-ready {
@@ -182,11 +192,12 @@
   }
 
   &__no-audio-indicator {
-    font-size: 12px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    background-color: rgba(0, 0, 0, 0.1);
-    color: rgba(0, 0, 0, 0.6);
+    color: #888;
+    font-style: italic;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
   }
   
   &__no-audio {
@@ -254,6 +265,10 @@
       }
     }
     
+    &__status-message {
+      color: rgba(255, 255, 255, 0.7);
+    }
+    
     &__anki-ready {
       background-color: rgba(255, 255, 255, 0.45);
     }
@@ -291,5 +306,14 @@
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 } 
