@@ -42,13 +42,15 @@ const ExampleSentenceAudio = ({ sentence, audioUrl, isLoading, cardId, audioFile
 
   // Clean up any pending timeouts on unmount
   useEffect(() => {
+    const currentAudio = audioRef.current;
+    
     return () => {
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
       }
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
       }
     };
   }, []);
@@ -63,7 +65,8 @@ const ExampleSentenceAudio = ({ sentence, audioUrl, isLoading, cardId, audioFile
     console.log('audioUrl changed:', { 
       hasAudioUrl: !!localAudioUrl,
       audioRefExists: !!audioRef.current,
-      fallbackAttempted
+      fallbackAttempted,
+      localAudioUrl: localAudioUrl
     });
     
     // If we don't have a URL, ensure regeneration is attempted
@@ -152,7 +155,7 @@ const ExampleSentenceAudio = ({ sentence, audioUrl, isLoading, cardId, audioFile
         }
       };
     }
-  }, [localAudioUrl, sentence, cardId, retryCount]);
+  }, [localAudioUrl, sentence, cardId, retryCount, fallbackAttempted]);
 
   // Attempt to regenerate audio if we have sentence but no audioUrl
   useEffect(() => {
@@ -196,7 +199,6 @@ const ExampleSentenceAudio = ({ sentence, audioUrl, isLoading, cardId, audioFile
     }
   }, [localAudioUrl, fallbackAttempted, sentence, cardId, audioFilename]);
 
-  // Add this initialization effect after all other useEffect hooks, just before the handleAudioEnd function
   // Initialize generation immediately upon component mount if needed
   useEffect(() => {
     // If we have sentence and cardId but no audioUrl on first render, trigger generation right away
@@ -234,9 +236,8 @@ const ExampleSentenceAudio = ({ sentence, audioUrl, isLoading, cardId, audioFile
       
       initiateGeneration();
     }
-  // Run only once on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Include dependencies that are used in the effect
+  }, [audioUrl, sentence, cardId, fallbackAttempted]);
 
   // Handle audio end event
   const handleAudioEnd = () => {

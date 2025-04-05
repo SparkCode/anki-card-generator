@@ -41,6 +41,13 @@ test('should configure API keys and generate a card for "reading"', async ({ pag
   // Navigate to the application
   await page.goto('/');
   
+  // Track audio speech API calls
+  const audioSpeechRequests: string[] = [];
+  await page.route('**/v1/audio/speech', route => {
+    audioSpeechRequests.push(route.request().url());
+    route.continue();
+  });
+  
   // Wait for the application to load
   await page.waitForSelector('.App', { state: 'visible' });
   
@@ -323,6 +330,10 @@ test('should configure API keys and generate a card for "reading"', async ({ pag
   
   // Take a screenshot of the result
   await page.screenshot({ path: 'e2e/screenshots/reading-card.png', fullPage: true });
+  
+  // Verify that the audio/speech request was made exactly once
+  console.log(`Number of audio/speech API requests: ${audioSpeechRequests.length}`);
+  expect(audioSpeechRequests.length).toBe(1);
   
   // Add basic assertion - check if the page contains the word we searched for
   const pageContent = await page.content();

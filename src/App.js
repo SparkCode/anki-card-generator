@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import APISettingsModal from './components/APISettingsModal';
 import WordForm from './components/WordForm';
 import CardDisplay from './components/CardDisplay';
@@ -10,7 +10,7 @@ import { generateAnkiCard } from './services/OpenRouterService';
 import { guiAddCards, getDecks, storeAudioData } from './services/AnkiService';
 import { fetchWordInfo, extractPronunciationInfo } from './services/DictionaryService';
 import { hasApiKey, addChatHistoryEntry, getApiKey, setLocalStorageItem, getLocalStorageItem } from './utils/localStorage';
-import { hasOpenAIApiKey, generateExampleAudio, setOpenAIApiKey } from './services/TtsService';
+import { hasOpenAIApiKey, generateExampleAudio } from './services/TtsService';
 import audioDB from './services/AudioDBService';
 import './App.css';
 const { extractAiExampleSentence } = require('./utils/extractors');
@@ -52,7 +52,6 @@ function App() {
       
       // Try to get stored pronunciation info for the current word and example sentence
       let pronunciationInfo = null;
-      let ttsAudioFilename = null;
       
       // Look for dictionary data based on the extracted example sentence from the content
       const aiExampleSentence = extractAiExampleSentence(content);
@@ -358,7 +357,6 @@ function App() {
       }
       
       // Generate TTS audio if enabled and not already available, or if we have a new AI example
-      let ttsPreviewUrl = null;
       let attemptedTts = pronunciationInfo?.attemptedTts || false;
       let ttsGeneratedSuccessfully = false;
       
@@ -369,7 +367,6 @@ function App() {
         
         if (ttsResult && ttsResult.success) {
           ttsAudioFilename = ttsResult.filename;
-          ttsPreviewUrl = ttsResult.previewUrl;
           ttsGeneratedSuccessfully = true;
         }
       }

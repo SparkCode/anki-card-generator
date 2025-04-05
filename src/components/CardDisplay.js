@@ -244,39 +244,6 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate, ttsResu
             ttsPreviewUrl: ttsData.previewUrl ? 'exists' : 'missing',
             exampleSentence: aiExampleSentence
           });
-        } else {
-          // If not found in AudioDB, try to generate using getTtsForSentence if we have the current word
-          if (currentWord) {
-            console.log('Attempting to generate TTS for example sentence with currentWord:', currentWord);
-            const generatedTts = await getTtsForSentence(currentWord, aiExampleSentence);
-            
-            console.log('TTS generation result:', generatedTts);
-            
-            if (generatedTts && generatedTts.success) {
-              console.log('TTS generation successful, setting UI state');
-              setHasTtsAudio(true);
-              setTtsAudioFilename(generatedTts.filename);
-              setTtsPreviewUrl(generatedTts.previewUrl);
-              
-              console.log('TTS UI state after generation:', {
-                hasTts: true,
-                ttsAudioFilename: generatedTts.filename,
-                ttsPreviewUrl: generatedTts.previewUrl ? 'exists' : 'missing',
-                exampleSentence: aiExampleSentence
-              });
-            } else {
-              console.log('TTS generation failed, resetting audio state');
-              setHasTtsAudio(false);
-              setTtsAudioFilename(null);
-              setTtsPreviewUrl(null);
-            }
-          } else {
-            console.log('No current word available for TTS generation');
-            setHasTtsAudio(false);
-            setTtsAudioFilename(null);
-            setTtsPreviewUrl(null);
-          }
-          setExampleSentence(aiExampleSentence);
         }
       };
       
@@ -351,7 +318,7 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate, ttsResu
         setHasTtsAudio(hasTtsAudio => hasTtsAudio);
       }
     }
-  }, [exampleSentence, currentWord]);
+  }, [exampleSentence, currentWord, checkForMissingPronunciationInfo]);
   
   if (isLoading) {
     return (
