@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { saveApiKey, getApiKey } from '../utils/localStorage';
-import { saveOpenAIApiKey, getOpenAIApiKey, hasOpenAIApiKey } from '../services/TtsService';
+import { saveOpenAIApiKey, getOpenAIApiKey } from '../services/TtsService';
 
 /**
  * Modal dialog for managing API settings

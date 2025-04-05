@@ -24,6 +24,7 @@ const StandaloneExampleAudio = ({ word, sentence }) => {
   const [ttsAudioUrl, setTtsAudioUrl] = useState(null);
   const [ttsAudioFilename, setTtsAudioFilename] = useState(null);
   const [error, setError] = useState(null);
+  const [ttsLoading, setTtsLoading] = useState(false);
 
   useEffect(() => {
     // Reset state when word or sentence changes
@@ -49,7 +50,11 @@ const StandaloneExampleAudio = ({ word, sentence }) => {
           setExampleSentence(storedDictData.exampleSentence || sentence);
           setTtsAudioFilename(storedDictData.ttsAudioFilename || null);
           
-          // Handle audio URL carefully
+          // Set loading to false immediately to render the component
+          setLoading(false);
+          
+          // Handle audio URL separately - this doesn't affect main loading state
+          setTtsLoading(true);
           if (storedDictData.ttsPreviewUrl) {
             try {
               // Validate URL
@@ -60,8 +65,7 @@ const StandaloneExampleAudio = ({ word, sentence }) => {
               setTtsAudioUrl(null);
             }
           }
-          
-          setLoading(false);
+          setTtsLoading(false);
           return;
         }
       }
@@ -82,7 +86,7 @@ const StandaloneExampleAudio = ({ word, sentence }) => {
       <div className="standalone-example-audio">
         <div className="standalone-example-audio__loading">
           <div className="loading-spinner"></div>
-          <p>Loading audio for "{sentence || word}"...</p>
+          <p>Loading example for "{sentence || word}"...</p>
         </div>
       </div>
     );
@@ -118,6 +122,7 @@ const StandaloneExampleAudio = ({ word, sentence }) => {
         sentence={exampleSentence}
         audioUrl={ttsAudioUrl}
         audioFilename={ttsAudioFilename}
+        isLoading={ttsLoading}
       />
     </div>
   );
