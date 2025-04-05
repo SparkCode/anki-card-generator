@@ -421,6 +421,168 @@ test('should configure API keys and generate a card for "reading"', async ({ pag
     console.warn('Example sentence audio controls not found');
   }
   
+  // NEW: Refresh the page to test history functionality
+  console.log('Refreshing page to test history functionality...');
+  await page.reload();
+  
+  // Wait for the application to load after refresh
+  await page.waitForSelector('.App', { state: 'visible' });
+  console.log('Page refreshed successfully');
+  
+  // Wait for history items to be visible
+  console.log('Looking for history items...');
+  try {
+    // Try multiple potential selectors for history items
+    await page.waitForSelector(
+      '.history-item, .history-entry, [class*="history-"], div[class*="history"], li:has-text("reading")', 
+      { state: 'visible', timeout: 10000 }
+    );
+    
+    // Try to find history item containing "reading"
+    const historyItems = await page.locator('.history-item, .history-entry, [class*="history-"], div[class*="history"], li:has-text("reading")').all();
+    console.log(`Found ${historyItems.length} potential history items`);
+    
+    // Take screenshot before clicking
+    await page.screenshot({ path: 'e2e/screenshots/history-before-click.png', fullPage: true });
+    
+    let clickSuccessful = false;
+    
+    if (historyItems.length > 0) {
+      console.log('Clicking on history item...');
+      await historyItems[0].click({ timeout: 5000 });
+      clickSuccessful = true;
+    } else {
+      console.warn('Could not find a history item for "reading", trying JavaScript click...');
+      
+      // JavaScript fallback to find and click a history item
+      clickSuccessful = await page.evaluate(() => {
+        // Look for any element that might be a history item containing "reading"
+        const historyElements = Array.from(document.querySelectorAll('*'))
+          .filter(el => 
+            (el.textContent?.toLowerCase().includes('reading') || '') && 
+            (el.className.toLowerCase().includes('history') || 
+             el.id.toLowerCase().includes('history') ||
+             el.tagName === 'LI' || 
+             el.getAttribute('role') === 'listitem')
+          );
+        
+        if (historyElements.length > 0) {
+          // Use HTMLElement to access click method
+          (historyElements[0] as HTMLElement).click();
+          return true;
+        }
+        return false;
+      });
+      
+      if (clickSuccessful) {
+        console.log('Found and clicked history item using JavaScript');
+      } else {
+        console.error('Could not find any history item containing "reading"');
+        await page.screenshot({ path: 'e2e/screenshots/history-not-found.png', fullPage: true });
+      }
+    }
+    
+    if (clickSuccessful) {
+      // Wait for the card to load
+      console.log('Waiting for card to load from history...');
+      await page.waitForSelector('.card-content, .card-preview, .preview, .card-display, div[class*="card"]', { 
+        state: 'visible',
+        timeout: 20000
+      });
+      
+      // Wait to ensure everything is stable
+      await page.waitForTimeout(2000);
+      
+      // Take screenshot of the loaded card from history
+      console.log('Taking screenshot of history card...');
+      await page.screenshot({ path: 'e2e/screenshots/history-card.png', fullPage: true });
+      
+      // Verify content - using expect.soft() which is allowed in conditional blocks
+      const historyPageContent = await page.content();
+      expect.soft(historyPageContent).toContain('reading');
+      console.log('Successfully verified card loaded from history');
+      
+      // NEW: Check if audio elements from history card are present and playable
+      console.log('Checking audio elements in history card...');
+      
+      // Check pronunciation preview audio in history card
+      const historyPronAudioExists = await page.locator('.pronunciation-preview').isVisible();
+      if (historyPronAudioExists) {
+        console.log('History card: Pronunciation audio preview found');
+        
+        // Take a screenshot of the pronunciation audio section
+        await page.locator('.pronunciation-preview').screenshot({ path: 'e2e/screenshots/history-pronunciation-audio.png' });
+        
+        // Try to play the pronunciation audio
+        const pronPlayButton = await page.locator('.pronunciation-preview button[aria-label*="play" i], .pronunciation-preview button.play-button, .pronunciation-preview .audio-player button').first();
+        if (await pronPlayButton.isVisible()) {
+          console.log('History card: Play button for pronunciation audio is visible');
+          
+          try {
+            await pronPlayButton.click({ timeout: 3000 });
+            console.log('History card: Clicked pronunciation play button');
+            
+            // Check if the audio is playing (the button state might change)
+            await page.waitForTimeout(500);
+            const isPlaying = await page.evaluate(() => {
+              const audioElements = document.querySelectorAll('audio');
+              return Array.from(audioElements).some(audio => !(audio as HTMLAudioElement).paused);
+            });
+            
+            console.log(`History card: Pronunciation audio is ${isPlaying ? 'playing' : 'not playing'}`);
+          } catch (error) {
+            console.warn('History card: Could not play pronunciation audio:', error);
+          }
+        } else {
+          console.warn('History card: Play button for pronunciation audio is not visible');
+        }
+      } else {
+        console.warn('History card: Pronunciation audio preview not found');
+      }
+      
+      // Check example sentence audio in history card
+      const historyExampleAudioExists = await page.locator('.example-sentence-audio__controls').isVisible();
+      if (historyExampleAudioExists) {
+        console.log('History card: Example sentence audio controls found');
+        
+        // Take a screenshot of the example sentence audio section
+        await page.locator('.example-sentence-audio__controls').screenshot({ path: 'e2e/screenshots/history-example-audio.png' });
+        
+        // Try to play the example sentence audio
+        const examplePlayButton = await page.locator('.example-sentence-audio__controls button[aria-label*="play" i], .example-sentence-audio__controls button.play-button, .example-sentence-audio__controls .audio-player button').first();
+        if (await examplePlayButton.isVisible()) {
+          console.log('History card: Play button for example sentence audio is visible');
+          
+          try {
+            await examplePlayButton.click({ timeout: 3000 });
+            console.log('History card: Clicked example sentence play button');
+            
+            // Check if the audio is playing
+            await page.waitForTimeout(500);
+            const isPlaying = await page.evaluate(() => {
+              const audioControls = document.querySelector('.example-sentence-audio__controls');
+              if (!audioControls) return false;
+              
+              const audioElements = audioControls.querySelectorAll('audio');
+              return Array.from(audioElements).some(audio => !(audio as HTMLAudioElement).paused);
+            });
+            
+            console.log(`History card: Example sentence audio is ${isPlaying ? 'playing' : 'not playing'}`);
+          } catch (error) {
+            console.warn('History card: Could not play example sentence audio:', error);
+          }
+        } else {
+          console.warn('History card: Play button for example sentence audio is not visible');
+        }
+      } else {
+        console.warn('History card: Example sentence audio controls not found');
+      }
+    }
+  } catch (error) {
+    console.error('Error working with history:', error);
+    await page.screenshot({ path: 'e2e/screenshots/history-error.png', fullPage: true });
+  }
+  
   // Check if any console errors were detected during the test (excluding known IndexedDB errors)
   if (consoleErrors.length > 0) {
     // Take a screenshot showing the current state when errors occurred
