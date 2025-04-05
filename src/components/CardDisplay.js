@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -277,8 +277,8 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate, ttsResu
     });
   }, [hasTtsAudio, ttsAudioFilename, ttsPreviewUrl, exampleSentence]);
   
-  // Add this helper function before the return statement
-  const checkForMissingPronunciationInfo = (sentence) => {
+  // Add this helper function wrapped in useCallback to prevent recreation on every render
+  const checkForMissingPronunciationInfo = useCallback((sentence) => {
     if (!sentence) return;
     
     const dictKey = generateDictDataKey(sentence);
@@ -306,7 +306,7 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate, ttsResu
     }
     
     return false;
-  };
+  }, [currentWord]); // Only depend on currentWord since it's used inside
   
   // Add this useEffect to check for missing pronunciation info when the component renders
   useEffect(() => {
