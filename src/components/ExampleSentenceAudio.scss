@@ -2,7 +2,7 @@
 @import '../styles/animations.scss';
 
 .example-sentence-audio {
-  margin: 16px 0;
+  margin: 10px 0;
   padding: 12px;
   border-radius: 8px;
   background-color: rgba(0, 0, 0, 0.05);
@@ -55,68 +55,100 @@
   }
   
   &__retry-button {
-    margin-left: 8px;
-    background-color: #f33;
-    border: none;
-    border-radius: 6px;
-    padding: 4px 8px;
-    font-size: 12px;
-    color: #fff;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 14px;
     cursor: pointer;
-    transition: background-color 0.2s ease-in-out;
+    transition: background-color 0.2s ease;
+    margin-top: 8px;
     
     &:hover:not(:disabled) {
-      background-color: #e52e2e;
+      background-color: #e0e0e0;
     }
     
     &:disabled {
-      opacity: 0.5;
+      opacity: 0.6;
       cursor: not-allowed;
     }
   }
   
   &__content {
-    margin-bottom: 8px;
-  }
-  
-  &__row {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 10px;
   }
   
-  &__text {
+  &__sentence {
     flex: 1;
-    margin-right: 10px;
-    font-style: italic;
+    font-size: 16px;
     color: #000;
+    margin: 0;
+  }
+  
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   
   &__play-button {
-    font-size: 24px;
-    color: var(--depot-color-text-primary);
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
+    background-color: #fc0;
+    border: none;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color 0.2s ease-in-out;
     
     &:hover {
-      transform: scale(1.05);
-      box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
-      filter: brightness(110%);
+      background-color: #f2c200;
     }
     
-    &.playing {
-      animation: pulse 1.5s infinite ease-in-out;
-      background-color: var(--primary-color-dark);
+    &:active {
+      transform: scale(0.95);
     }
+    
+    svg {
+      width: 18px;
+      height: 18px;
+      fill: #000;
+    }
+  }
+  
+  &__loading-indicator {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    
+    .loading-spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(0, 0, 0, 0.1);
+      border-top-color: #07f;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+  }
+  
+  &__status-message {
+    font-size: 12px;
+    color: #666;
+    font-style: italic;
+    max-width: 200px;
+    white-space: normal;
+    text-align: center;
+    animation: fade-in 0.3s ease-in-out;
   }
   
   &__anki-ready {
@@ -152,21 +184,26 @@
     text-align: center;
   }
   
-  &__loading {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    .loading-spinner {
-      margin-right: 8px;
-    }
-  }
-  
   &__no-audio {
     color: #f33;
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+
+  &__no-audio-indicator {
+    color: #888;
+    font-style: italic;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  &__no-audio {
+    padding: 10px;
+    text-align: center;
+    color: rgba(0, 0, 0, 0.6);
   }
 }
 
@@ -174,7 +211,7 @@
   .example-sentence-audio {
     background-color: rgba(255, 255, 255, 0.1);
     
-    &__text {
+    &__sentence {
       color: #fff;
     }
     
@@ -208,12 +245,28 @@
     }
     
     &__play-button {
-      background-color: #56a8fc;
+      background-color: #fdde55;
       
       &:hover {
-        box-shadow: 0 0 8px rgba(255, 255, 255, 0.25);
-        filter: brightness(110%);
+        background-color: #f0d251;
       }
+      
+      svg {
+        fill: #000;
+      }
+    }
+    
+    &__loading-indicator {
+      background-color: rgba(255, 255, 255, 0.1);
+      
+      .loading-spinner {
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-top-color: #56a8fc;
+      }
+    }
+    
+    &__status-message {
+      color: rgba(255, 255, 255, 0.7);
     }
     
     &__anki-ready {
@@ -226,6 +279,11 @@
     
     &__no-audio {
       color: #fb5c56;
+    }
+
+    &__no-audio-indicator {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.6);
     }
   }
 }
@@ -241,6 +299,21 @@
   }
   100% {
     transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
     opacity: 1;
   }
 } 

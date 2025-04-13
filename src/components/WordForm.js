@@ -61,7 +61,7 @@ const WordForm = ({ onSubmit, isLoading }) => {
             type="text"
             value={context}
             onChange={(e) => setContext(e.target.value)}
-            placeholder="e.g., work ethics, public speaking, time management"
+            placeholder="e.g., work ethics, public speaking or 'He was diligent in completing his work on time'"
             className="form-control"
             disabled={isLoading}
           />

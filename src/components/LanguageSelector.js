@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getLocalStorageItem, setLocalStorageItem } from '../utils/localStorage';
+import { setLocalStorageItem } from '../utils/localStorage';
 
 /**
  * Component for entering a native language for translations

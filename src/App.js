@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import APISettingsModal from './components/APISettingsModal';
 import WordForm from './components/WordForm';
 import CardDisplay from './components/CardDisplay';
@@ -10,7 +10,8 @@ import { generateAnkiCard } from './services/OpenRouterService';
 import { guiAddCards, getDecks, storeAudioData } from './services/AnkiService';
 import { fetchWordInfo, extractPronunciationInfo } from './services/DictionaryService';
 import { hasApiKey, addChatHistoryEntry, getApiKey, setLocalStorageItem, getLocalStorageItem } from './utils/localStorage';
-import { hasOpenAIApiKey, generateExampleAudio, setOpenAIApiKey } from './services/TtsService';
+import { hasOpenAIApiKey, generateExampleAudio } from './services/TtsService';
+import audioDB from './services/AudioDBService';
 import './App.css';
 const { extractAiExampleSentence } = require('./utils/extractors');
 
@@ -51,7 +52,6 @@ function App() {
       
       // Try to get stored pronunciation info for the current word and example sentence
       let pronunciationInfo = null;
-      let ttsAudioFilename = null;
       
       // Look for dictionary data based on the extracted example sentence from the content
       const aiExampleSentence = extractAiExampleSentence(content);
@@ -100,6 +100,15 @@ function App() {
     if (!hasApiKey()) {
       setApiSettingsModalOpen(true);
     }
+    
+    // Clean up old audio files (keep files from last 30 days)
+    audioDB.cleanupOldFiles(30)
+      .then(deletedCount => {
+        if (deletedCount > 0) {
+          console.log(`Cleaned up ${deletedCount} old audio files`);
+        }
+      })
+      .catch(err => console.error('Error cleaning up old audio files:', err));
   }, []);
 
   const handleApiSettingsSave = () => {
@@ -173,14 +182,18 @@ function App() {
     
     try {
       console.log('Generating TTS audio for:', sentence);
+      
       const { filename, audioData } = await generateExampleAudio(word, sentence);
       
       // Store in Anki
       await storeAudioData(audioData, filename);
       
-      // Create a blob URL for playback in the browser
+      // Create audio blob for playback
       const audioBlob = new Blob([audioData], { type: 'audio/mp3' });
       const audioBlobUrl = URL.createObjectURL(audioBlob);
+      
+      // Store in AudioDBService
+      await audioDB.storeAudio(word, sentence, audioBlob);
       
       console.log('TTS audio generated successfully as:', filename, audioBlobUrl);
       
@@ -201,7 +214,8 @@ function App() {
       return {
         filename,
         previewUrl: audioBlobUrl,
-        success: true
+        success: true,
+        fromCache: false
       };
     } catch (error) {
       console.error('Failed to generate TTS audio:', error);
@@ -241,7 +255,7 @@ function App() {
       }
       
       // Generate the card with the pronunciation info if available
-      const result = await generateAnkiCard(word, context, selectedLanguage, selectedEnglishLevel, pronunciationInfo);
+      const result = await generateAnkiCard(word, context, selectedLanguage, selectedEnglishLevel, pronunciationInfo, selectedDeck);
       setCardContent(result.content);
       
       // Extract example sentence from the AI-generated card (this is preferred over dictionary)
@@ -251,7 +265,6 @@ function App() {
       }
       
       // Generate TTS audio if enabled
-      let ttsPreviewUrl = null;
       let attemptedTts = false;
       let ttsGeneratedSuccessfully = false;
       
@@ -262,7 +275,6 @@ function App() {
         
         if (ttsResult && ttsResult.success) {
           ttsAudioFilename = ttsResult.filename;
-          ttsPreviewUrl = ttsResult.previewUrl;
           ttsGeneratedSuccessfully = true;
         }
       }
@@ -335,7 +347,7 @@ function App() {
       }
       
       // Generate the card with pronunciation info if available
-      const result = await generateAnkiCard(currentWord, currentContext, selectedLanguage, selectedEnglishLevel, pronunciationInfo);
+      const result = await generateAnkiCard(currentWord, currentContext, selectedLanguage, selectedEnglishLevel, pronunciationInfo, currentDeck);
       setCardContent(result.content);
       
       // Extract example sentence from the AI-generated card (this is preferred over dictionary)
@@ -345,7 +357,6 @@ function App() {
       }
       
       // Generate TTS audio if enabled and not already available, or if we have a new AI example
-      let ttsPreviewUrl = null;
       let attemptedTts = pronunciationInfo?.attemptedTts || false;
       let ttsGeneratedSuccessfully = false;
       
@@ -356,7 +367,6 @@ function App() {
         
         if (ttsResult && ttsResult.success) {
           ttsAudioFilename = ttsResult.filename;
-          ttsPreviewUrl = ttsResult.previewUrl;
           ttsGeneratedSuccessfully = true;
         }
       }
@@ -593,7 +603,7 @@ function App() {
       <footer className="App-footer">
         <p>Made with ❤️ for language learners</p>
         <p>
-          <a href="https://github.com/username/anki-card-generator" target="_blank" rel="noopener noreferrer">
+          <a href="https://github.com/SparkCode/anki-card-generator" target="_blank" rel="noopener noreferrer">
             View on GitHub
           </a>
         </p>
