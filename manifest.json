@@ -8,6 +8,11 @@
       "type": "image/x-icon"
     },
     {
+      "src": "anki-card-icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512"
+    },
+    {
       "src": "favicon-16x16.png",
       "type": "image/png",
       "sizes": "16x16"
@@ -20,7 +25,7 @@
     {
       "src": "apple-touch-icon.png",
       "type": "image/png",
-      "sizes": "180x180"
+      "sizes": "192x192"
     },
     {
       "src": "android-chrome-192x192.png",
@@ -29,16 +34,6 @@
     },
     {
       "src": "android-chrome-512x512.png",
-      "type": "image/png",
-      "sizes": "512x512"
-    },
-    {
-      "src": "logo192.png",
-      "type": "image/png",
-      "sizes": "192x192"
-    },
-    {
-      "src": "logo512.png",
       "type": "image/png",
       "sizes": "512x512"
     }
