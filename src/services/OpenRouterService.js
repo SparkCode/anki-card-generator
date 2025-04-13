@@ -11,14 +11,17 @@ const DEFAULT_MODEL = 'google/gemini-2.0-flash-001';
  * @param {string} nativeLanguage - User's native language (e.g., 'Russian', 'French', 'German')
  * @param {string} englishLevel - User's English level (e.g., 'B2', 'C1')
  * @param {Object} pronunciationInfo - Optional pronunciation information from the dictionary
+ * @param {string} deckName - The name of the deck
  * @returns {string} - The formatted prompt
  */
-const getPromptText = (word, context = '', nativeLanguage = 'Russian', englishLevel = 'B2 preferably (maybe C1)', pronunciationInfo = null) => {
+const getPromptText = (word, context = '', nativeLanguage = 'Russian', englishLevel = 'B2 preferably (maybe C1)', pronunciationInfo = null, deckName = '') => {
   const contextPart = context ? `\nContext for this word: ${context}` : '';
   // Use the language directly, default to Russian if empty
   const languageName = nativeLanguage && nativeLanguage.trim() ? nativeLanguage.trim() : 'Russian';
   // Use the provided English level or default
   const level = englishLevel && englishLevel.trim() ? englishLevel.trim() : 'B2 preferably (maybe C1)';
+
+  const deckContext = deckName ? `\nI am currently studying the deck named: "${deckName}". Use this deck name for additional context if relevant.` : '';
 
   return `
   i'm learning english with program Anki for memory words
@@ -32,6 +35,7 @@ do sentence moderate short like 10 words or so and with most popular usage with 
 in bold in top/bottom only show the word or set expression with the word
 
 Feel like a kind 24 yo teacher in university but informal so it feels warm
+${deckContext}
 
 So your goal is come up with anki card with word that given by me
 
@@ -116,16 +120,17 @@ Here's the word I want to learn:${word}${contextPart}`;
  * @param {string} nativeLanguage - User's native language (defaults to 'Russian')
  * @param {string} englishLevel - User's English level (defaults to 'B2 preferably (maybe C1)')
  * @param {Object} pronunciationInfo - Optional pronunciation information
+ * @param {string} deckName - The name of the deck
  * @returns {Promise} - The API response
  */
-export const generateAnkiCard = async (word, context = '', nativeLanguage = 'Russian', englishLevel = 'B2 preferably (maybe C1)', pronunciationInfo = null) => {
+export const generateAnkiCard = async (word, context = '', nativeLanguage = 'Russian', englishLevel = 'B2 preferably (maybe C1)', pronunciationInfo = null, deckName = '') => {
   const apiKey = getApiKey();
   
   if (!apiKey) {
     throw new Error('API key not found. Please set your OpenRouter API key.');
   }
   
-  const promptContent = getPromptText(word, context, nativeLanguage, englishLevel, pronunciationInfo);
+  const promptContent = getPromptText(word, context, nativeLanguage, englishLevel, pronunciationInfo, deckName);
   
   const payload = {
     model: DEFAULT_MODEL,

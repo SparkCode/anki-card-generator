@@ -10,9 +10,6 @@ marked.setOptions({
   headerIds: false
 });
 
-// For audio file handling
-const AUDIO_FETCH_TIMEOUT = 10000; // 10 seconds timeout for audio downloads
-
 // Constants
 const API_URL = 'http://127.0.0.1:8765'; // Direct AnkiConnect URL
 const API_VERSION = 6;

@@ -255,7 +255,7 @@ function App() {
       }
       
       // Generate the card with the pronunciation info if available
-      const result = await generateAnkiCard(word, context, selectedLanguage, selectedEnglishLevel, pronunciationInfo);
+      const result = await generateAnkiCard(word, context, selectedLanguage, selectedEnglishLevel, pronunciationInfo, selectedDeck);
       setCardContent(result.content);
       
       // Extract example sentence from the AI-generated card (this is preferred over dictionary)
@@ -347,7 +347,7 @@ function App() {
       }
       
       // Generate the card with pronunciation info if available
-      const result = await generateAnkiCard(currentWord, currentContext, selectedLanguage, selectedEnglishLevel, pronunciationInfo);
+      const result = await generateAnkiCard(currentWord, currentContext, selectedLanguage, selectedEnglishLevel, pronunciationInfo, currentDeck);
       setCardContent(result.content);
       
       // Extract example sentence from the AI-generated card (this is preferred over dictionary)
@@ -603,7 +603,7 @@ function App() {
       <footer className="App-footer">
         <p>Made with ❤️ for language learners</p>
         <p>
-          <a href="https://github.com/username/anki-card-generator" target="_blank" rel="noopener noreferrer">
+          <a href="https://github.com/SparkCode/anki-card-generator" target="_blank" rel="noopener noreferrer">
             View on GitHub
           </a>
         </p>
