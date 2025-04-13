@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <!-- Light blue circular background -->
-  <circle cx="256" cy="256" r="256" fill="#f0f8ff"/>
-  
-  <!-- Pencil icon in light blue - scaled up and centered better -->
-  <path fill="#40c4ff" d="M416 96a53.333 53.333 0 0 0-75.733 0L304 131.733l75.733 75.734L416 170.667A53.333 53.333 0 0 0 416 96zM281.6 154.133l-150 150V380h75.733l150-150-75.733-75.867z"/>
-</svg>

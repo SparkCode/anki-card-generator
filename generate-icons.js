@@ -12,32 +12,27 @@ try {
   process.exit(1);
 }
 
-const SVG_PATH = path.join(__dirname, 'public', 'anki-card-icon.svg');
+const SOURCE_IMAGE_PATH = path.join(__dirname, 'emoji_pencil.png'); // Use the downloaded emoji PNG
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
-// Define all the icons we need to generate
+// Define all the icons we need to generate (excluding SVG)
 const ICONS = [
   { name: 'android-chrome-192x192.png', size: 192 },
   { name: 'android-chrome-512x512.png', size: 512 },
   { name: 'favicon-32x32.png', size: 32 },
   { name: 'favicon-16x16.png', size: 16 },
-  { name: 'apple-touch-icon.png', size: 180 },
+  { name: 'apple-touch-icon.png', size: 180 }, // Standard size for apple-touch-icon
   { name: 'logo192.png', size: 192 },
   { name: 'logo512.png', size: 512 },
 ];
 
-// Generate PNG icons from SVG
-console.log('Generating PNG icons...');
+// Generate PNG icons from the source PNG
+console.log('Generating PNG icons from emoji...');
 ICONS.forEach(icon => {
   const outputPath = path.join(PUBLIC_DIR, icon.name);
   try {
-    // Using a better scaling approach that maintains the entire icon
-    // -density 1200: High resolution for better quality on downscaling
-    // -resize WxH: Resize while maintaining aspect ratio
-    // -background none: Transparent background
-    // -gravity center: Center the icon
-    // -extent WxH: Ensure the output has the exact dimensions we want
-    execSync(`convert -background none -density 1200 ${SVG_PATH} -resize ${icon.size}x${icon.size} -gravity center -extent ${icon.size}x${icon.size} ${outputPath}`);
+    // Resize the source PNG to the target size, maintaining aspect ratio and centering
+    execSync(`convert ${SOURCE_IMAGE_PATH} -resize ${icon.size}x${icon.size} -gravity center -extent ${icon.size}x${icon.size} ${outputPath}`);
     console.log(`✅ Generated ${icon.name}`);
   } catch (error) {
     console.error(`❌ Failed to generate ${icon.name}:`, error.message);
