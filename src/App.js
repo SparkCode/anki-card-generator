@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import APISettingsModal from './components/APISettingsModal';
 import WordForm from './components/WordForm';
 import CardDisplay from './components/CardDisplay';
@@ -29,8 +29,13 @@ const generateDictDataKey = (sentence) => {
 };
 
 function App() {
-  const [apiSettingsModalOpen, setApiSettingsModalOpen] = useState(false);
+  const [inputText, setInputText] = useState('');
+  const [ankiCards, setAnkiCards] = useState([]);
+  const [apiKey, setApiKey] = useState('');
+  const [chatHistory, setChatHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [apiSettingsModalOpen, setApiSettingsModalOpen] = useState(false);
+  const [promptTemplate, setPromptTemplate] = useState('');
   const [error, setError] = useState('');
   const [cardContent, setCardContent] = useState('');
   const [currentWord, setCurrentWord] = useState(''); 
@@ -44,14 +49,11 @@ function App() {
   const [selectedLanguage, setSelectedLanguage] = useState(getLocalStorageItem('userNativeLanguage') || 'Russian');
   const [selectedEnglishLevel, setSelectedEnglishLevel] = useState(getLocalStorageItem('userEnglishLevel') || 'B2 preferably (maybe C1)');
   const [ttsResult, setTtsResult] = useState(null);
-  const [promptTemplate, setPromptTemplate] = useState('');
   const [modalContent, setModalContent] = useState(null);
-  const [generatedCardData, setGeneratedCardData] = useState(null);
   const [entryToDelete, setEntryToDelete] = useState(null);
-  const [showConfirmClear, setShowConfirmClear] = useState(false);
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+
   const chatHistoryRef = useRef(null);
-  
+
   // Function to directly open Anki UI with card content
   const openAnkiCardUI = async (content) => {
     try {
@@ -125,7 +127,7 @@ function App() {
 
   const handleApiSettingsSave = () => {
     setApiSettingsModalOpen(false);
-    setShowApiSettings(false); // Close the API settings section if it's open within settings modal
+    setShowApiSettings(false);
   };
 
   const handleCloseSettings = () => {
@@ -229,7 +231,7 @@ function App() {
     setCurrentWord(word);
     setCurrentContext(context);
     setCurrentDeck(selectedDeck);
-    setTtsResult(null); // Reset TTS result
+    setTtsResult(null);
     
     try {
       // First, try to fetch dictionary data for the word
@@ -267,7 +269,7 @@ function App() {
       if (exampleSentence && enableTts) {
         attemptedTts = true; // Mark that we attempted to generate TTS
         const ttsResult = await generateTtsAudio(word, exampleSentence);
-        setTtsResult(ttsResult); // Save TTS result to state
+        setTtsResult(ttsResult);
         
         if (ttsResult && ttsResult.success) {
           ttsAudioFilename = ttsResult.filename;
@@ -286,9 +288,7 @@ function App() {
           },
           exampleSentence,
           ttsAudioFilename,
-          word, // Store the word as well for reverse lookups
-          // Don't store blob URLs in localStorage as they don't persist between sessions
-          // Instead we'll keep track of whether audio generation succeeded
+          word,
           timestamp: Date.now()
         });
       }
@@ -323,7 +323,7 @@ function App() {
     setIsLoading(true);
     setError('');
     setCardContent('');
-    setTtsResult(null); // Reset TTS result
+    setTtsResult(null);
     
     try {
       // First, check if we already have dictionary data for this word
@@ -359,7 +359,7 @@ function App() {
       if (exampleSentence && enableTts) {
         attemptedTts = true;
         const ttsResult = await generateTtsAudio(currentWord, exampleSentence);
-        setTtsResult(ttsResult); // Save TTS result to state
+        setTtsResult(ttsResult);
         
         if (ttsResult && ttsResult.success) {
           ttsAudioFilename = ttsResult.filename;
@@ -378,7 +378,7 @@ function App() {
           },
           exampleSentence,
           ttsAudioFilename,
-          word: currentWord, // Store the word as well for reference
+          word: currentWord,
           timestamp: Date.now()
         });
       }
@@ -460,27 +460,21 @@ function App() {
   };
 
   const handleManageApiKeys = () => {
-    setShowSettings(false); // Close settings modal
-    setShowApiSettings(true); // Open API settings modal
+    setShowSettings(false);
+    setShowApiSettings(true);
   };
 
   const handleConfirmClearHistory = () => {
     clearChatHistory();
-    // Optionally update state if ChatHistory component relies on it directly
-    // chatHistoryRef.current?.updateHistory?.(); // Example if ChatHistory has an update method
-    setModalContent(null); // Close the modal
-    setShowConfirmClear(false); // Close confirmation state if used
+    setModalContent(null);
   };
 
   const handleConfirmDeleteEntry = () => {
     if (entryToDelete) {
       deleteChatHistoryEntry(entryToDelete);
-      // Optionally update state if ChatHistory component relies on it directly
-      // chatHistoryRef.current?.updateHistory?.(); // Example if ChatHistory has an update method
-      setEntryToDelete(null); // Clear the ID
+      setEntryToDelete(null);
     }
-    setModalContent(null); // Close the modal
-    setShowConfirmDelete(false); // Close confirmation state if used
+    setModalContent(null);
   };
 
   return (
@@ -531,12 +525,10 @@ function App() {
             onHistoryItemClick={handleHistoryItemClick}
             onClearHistory={() => {
               setModalContent('confirmClear');
-              // setShowConfirmClear(true); // Keep or remove based on whether you use this state elsewhere
             }}
             onDeleteEntry={(id) => {
               setEntryToDelete(id);
               setModalContent('confirmDelete');
-              // setShowConfirmDelete(true); // Keep or remove based on whether you use this state elsewhere
             }}
           />
         </section>

@@ -288,14 +288,6 @@ body {
   color: var(--primary-color);
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.card-side-header:hover {
-  background-color: var(--secondary-color);
-  padding-left: 0.5rem;
-  border-radius: 4px 4px 0 0;
 }
 
 .card-side-content {
@@ -306,14 +298,8 @@ body {
 }
 
 .card-side-content .markdown-content {
-  cursor: pointer;
   padding: 0.5rem;
   border-radius: 4px;
-  transition: background-color 0.2s ease;
-}
-
-.card-side-content .markdown-content:hover {
-  background-color: var(--secondary-color);
 }
 
 .card-divider {

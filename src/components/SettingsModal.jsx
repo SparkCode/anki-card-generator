@@ -3,7 +3,7 @@ import Modal from './Modal';
 import LanguageSelector from './LanguageSelector';
 import EnglishLevelSelector from './EnglishLevelSelector';
 // Import the constant needed for reset
-import { DEFAULT_PROMPT_TEMPLATE } from '../services/OpenRouterService';
+// import { DEFAULT_PROMPT_TEMPLATE } from '../services/OpenRouterService';
 // Import utility functions used directly
 import { getApiKey } from '../utils/localStorage';
 import { hasOpenAIApiKey } from '../services/TtsService'; // Assuming this is where it lives

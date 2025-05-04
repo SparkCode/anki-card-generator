@@ -14,6 +14,7 @@ import '../styles/reset.css';
 import '../styles/animations.css';
 // Then import component styles
 import './ExampleSentenceAudio.scss';
+// import AutosizeTextarea from 'react-textarea-autosize';
 
 /**
  * Component to display the generated Anki card with front and back views
@@ -45,8 +46,6 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate, ttsResu
   const parsedCard = content ? extractCardParts(content) : { front: null, back: null };
   const [frontText, setFrontText] = useState('');
   const [backText, setBackText] = useState('');
-  const [frontEditing, setFrontEditing] = useState(false);
-  const [backEditing, setBackEditing] = useState(false);
   const [currentWord, setCurrentWord] = useState('');
   const [ttsAudioFilename, setTtsAudioFilename] = useState(null);
   const [ttsPreviewUrl, setTtsPreviewUrl] = useState(null);
@@ -79,9 +78,6 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate, ttsResu
       const { front, back } = extractCardParts(content);
       setFrontText(front || '');
       setBackText(back || '');
-      // Reset editing state when new content arrives
-      setFrontEditing(false);
-      setBackEditing(false);
     }
   }, [content]);
 
@@ -442,24 +438,13 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate, ttsResu
           <>
             {frontText && (
               <div className="card-side">
-                <div className="card-side-header" onClick={() => setFrontEditing(!frontEditing)}>
-                  Front {frontEditing ? "(Editing)" : "(Click to edit)"}
+                <div className="card-side-header">
+                  Front
                 </div>
                 <div className="card-side-content front-content">
-                  {frontEditing ? (
-                    <AutosizeTextarea
-                      value={frontText}
-                      onChange={setFrontText}
-                      placeholder="Edit the front side of your card here..."
-                    />
-                  ) : (
-                    <div 
-                      className="markdown-content" 
-                      onClick={() => setFrontEditing(true)}
-                    >
-                      <MarkdownRenderer content={frontText} />
-                    </div>
-                  )}
+                  <div className="markdown-content">
+                    <MarkdownRenderer content={frontText} />
+                  </div>
                 </div>
               </div>
             )}
@@ -467,24 +452,13 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate, ttsResu
             <div className="card-divider"></div>
             
             <div className="card-side">
-              <div className="card-side-header" onClick={() => setBackEditing(!backEditing)}>
-                Back {backEditing ? "(Editing)" : "(Click to edit)"}
+              <div className="card-side-header">
+                Back
               </div>
               <div className="card-side-content back-content">
-                {backEditing ? (
-                  <AutosizeTextarea
-                    value={backText}
-                    onChange={setBackText}
-                    placeholder="Edit the back side of your card here..."
-                  />
-                ) : (
-                  <div 
-                    className="markdown-content" 
-                    onClick={() => setBackEditing(true)}
-                  >
-                    <MarkdownRenderer content={backText} />
-                  </div>
-                )}
+                <div className="markdown-content">
+                  <MarkdownRenderer content={backText} />
+                </div>
               </div>
             </div>
           </>
@@ -548,43 +522,6 @@ const CardDisplay = ({ content, isLoading, onOpenInAnkiUI, onRegenerate, ttsResu
         )}
       </div>
     </div>
-  );
-};
-
-// Auto-resizing textarea component
-const AutosizeTextarea = ({ value, onChange, placeholder }) => {
-  const textareaRef = React.useRef(null);
-  
-  useEffect(() => {
-    if (textareaRef.current) {
-      // Reset height to auto to get the correct scrollHeight measurement
-      textareaRef.current.style.height = 'auto';
-      // Set the height to match the content, with a minimum of 150px
-      const scrollHeight = Math.max(150, textareaRef.current.scrollHeight);
-      textareaRef.current.style.height = `${scrollHeight}px`;
-    }
-  }, [value]);
-  
-  return (
-    <textarea
-      ref={textareaRef}
-      className="back-editor"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      style={{
-        width: '100%',
-        fontFamily: 'inherit',
-        fontSize: 'inherit',
-        padding: '12px',
-        border: '1px solid var(--border-color)',
-        borderRadius: '4px',
-        minHeight: '150px',
-        resize: 'vertical',
-        overflow: 'hidden',
-        lineHeight: '1.5'
-      }}
-    />
   );
 };
 
