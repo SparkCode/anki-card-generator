@@ -1,8 +1,10 @@
 import { getApiKey, getPromptTemplateFromStorage } from '../utils/localStorage';
 
 // Constants
-const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_MODEL = 'google/gemini-2.0-flash-001';
+// OpenAI chat completions endpoint
+const API_URL = 'https://api.openai.com/v1/chat/completions';
+// Default model to use for card generation
+const DEFAULT_MODEL = 'gpt-4o';
 
 // Default prompt template - Export this
 export const DEFAULT_PROMPT_TEMPLATE = `
@@ -113,13 +115,13 @@ const getCurrentPromptTemplate = () => {
  * @returns {string} - The formatted prompt
  */
 const getPromptText = (word, context = '', nativeLanguage = 'Russian', englishLevel = 'B2 preferably (maybe C1)', pronunciationInfo = null, deckName = '') => {
-  const contextPart = context ? `\\nContext for this word: ${context}` : '';
+  const contextPart = context ? `\nContext for this word: ${context}` : '';
   // Use the language directly, default to Russian if empty
   const languageName = nativeLanguage && nativeLanguage.trim() ? nativeLanguage.trim() : 'Russian';
   // Use the provided English level or default
   const level = englishLevel && englishLevel.trim() ? englishLevel.trim() : 'B2 preferably (maybe C1)';
 
-  const deckContext = deckName ? `\\nI am currently studying the deck named: "${deckName}". Use this deck name for additional context if relevant.` : '';
+  const deckContext = deckName ? `\nI am currently studying the deck named: "${deckName}". Use this deck name for additional context if relevant.` : '';
 
   let promptTemplate = getCurrentPromptTemplate(); // Use the function to get the template
 
@@ -134,7 +136,7 @@ const getPromptText = (word, context = '', nativeLanguage = 'Russian', englishLe
 };
 
 /**
- * Generate an Anki card via OpenRouter API
+ * Generate an Anki card via OpenAI Chat Completions API
  * @param {string} word - The word to create a card for
  * @param {string} context - Optional context for the word
  * @param {string} nativeLanguage - User's native language (defaults to 'Russian')
@@ -143,11 +145,18 @@ const getPromptText = (word, context = '', nativeLanguage = 'Russian', englishLe
  * @param {string} deckName - The name of the deck
  * @returns {Promise} - The API response
  */
-export const generateAnkiCard = async (word, context = '', nativeLanguage = 'Russian', englishLevel = 'B2 preferably (maybe C1)', pronunciationInfo = null, deckName = '') => {
+export const generateAnkiCard = async (
+  word,
+  context = '',
+  nativeLanguage = 'Russian',
+  englishLevel = 'B2 preferably (maybe C1)',
+  pronunciationInfo = null,
+  deckName = ''
+) => {
   const apiKey = getApiKey();
   
   if (!apiKey) {
-    throw new Error('API key not found. Please set your OpenRouter API key.');
+    throw new Error('API key not found. Please set your OpenAI API key.');
   }
   
   const promptContent = getPromptText(word, context, nativeLanguage, englishLevel, pronunciationInfo, deckName);
@@ -167,9 +176,7 @@ export const generateAnkiCard = async (word, context = '', nativeLanguage = 'Rus
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': window.location.origin,
-        'X-Title': 'Anki Card Generator'
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify(payload)
     });
@@ -191,7 +198,7 @@ export const generateAnkiCard = async (word, context = '', nativeLanguage = 'Rus
       model: data.model
     };
   } catch (error) {
-    console.error('Error calling OpenRouter API:', error);
+    console.error('Error calling OpenAI Chat Completions API:', error);
     throw error;
   }
-};
+}; 

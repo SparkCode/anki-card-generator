@@ -1,5 +1,6 @@
 // Local storage keys
-const API_KEY_STORAGE_KEY = 'openrouter_api_key';
+// Unified API key for OpenAI (used for both chat completions and TTS)
+const API_KEY_STORAGE_KEY = 'openai_api_key';
 const CHAT_HISTORY_STORAGE_KEY = 'anki_chat_history';
 
 /**
@@ -59,7 +60,7 @@ export const setLocalStorageItem = (key, value) => {
 
 /**
  * Save API key to local storage
- * @param {string} apiKey - The OpenRouter API key
+ * @param {string} apiKey - The OpenAI API key
  */
 export const saveApiKey = (apiKey) => {
   localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);

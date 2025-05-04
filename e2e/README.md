@@ -39,14 +39,14 @@ npm run e2e:debug
 
 ### API Flow Test
 
-This test requires OpenAI and OpenRouter API keys. You can run it using:
+This test requires an OpenAI API key. You can run it using:
 
 ```bash
 # Option 1: Use the helper script
-OPENAI_API_KEY=your_key OPENROUTER_API_KEY=your_key ./run-api-flow-test.sh
+OPENAI_API_KEY=your_key ./run-api-flow-test.sh
 
 # Option 2: Run directly
-OPENAI_API_KEY=your_key OPENROUTER_API_KEY=your_key npm run e2e:api-flow
+OPENAI_API_KEY=your_key npm run e2e:api-flow
 ```
 
 ## Viewing Results
@@ -57,5 +57,5 @@ OPENAI_API_KEY=your_key OPENROUTER_API_KEY=your_key npm run e2e:api-flow
 ## Troubleshooting
 
 - **Test Timeouts**: If the API response takes too long, the test will timeout. Check the `reading-card-timeout.png` screenshot to see what happened.
-- **Missing API Keys**: Ensure your API keys are correctly set as environment variables.
+- **Missing API Keys**: Ensure your OpenAI API key is correctly set as an environment variable.
 - **Element Not Found**: The test uses robust selectors, but if the UI changes significantly, selectors may need to be updated. 

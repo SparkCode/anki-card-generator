@@ -3,7 +3,7 @@ import Modal from './Modal';
 import LanguageSelector from './LanguageSelector';
 import EnglishLevelSelector from './EnglishLevelSelector';
 // Import the constant needed for reset
-// import { DEFAULT_PROMPT_TEMPLATE } from '../services/OpenRouterService';
+import { DEFAULT_PROMPT_TEMPLATE } from '../services/OpenAIChatService';
 // Import utility functions used directly
 import { getApiKey } from '../utils/localStorage';
 import { hasOpenAIApiKey } from '../services/TtsService'; // Assuming this is where it lives
@@ -36,8 +36,7 @@ const SettingsModal = ({
       <div className="settings-section">
         <h3>API Settings</h3>
         {/* Use functions passed via props or imported directly */}
-        <p>OpenRouter API Key: {getApiKey() ? '••••••••' + getApiKey().slice(-4) : 'Not set'}</p>
-        <p>OpenAI API Key: {hasOpenAIApiKey() ? '••••••••' : 'Not set'}</p>
+        <p>OpenAI API Key: {getApiKey() ? '••••••••' + getApiKey().slice(-4) : 'Not set'}</p>
         <button
           className="button secondary"
           onClick={onManageApiKeys} // Use the passed handler
@@ -112,7 +111,7 @@ const SettingsModal = ({
 
       <div className="settings-section">
         <h3>About</h3>
-        <p>This app generates Anki flashcards using OpenRouter API to access Google Gemini 2.0 Flash.</p>
+        <p>This app generates Anki flashcards using OpenAI's GPT-4o model for content and can optionally generate TTS audio.</p>
         <p>Your API keys are stored only in your browser's local storage.</p>
       </div>
 

@@ -6,7 +6,7 @@ import ChatHistory from './components/ChatHistory';
 import CreateCardModal from './components/CreateCardModal';
 import SettingsModal from './components/SettingsModal';
 import Modal from './components/Modal';
-import { generateAnkiCard, DEFAULT_PROMPT_TEMPLATE } from './services/OpenRouterService';
+import { generateAnkiCard, DEFAULT_PROMPT_TEMPLATE } from './services/OpenAIChatService';
 import { guiAddCards, getDecks, storeAudioData } from './services/AnkiService';
 import { fetchWordInfo, extractPronunciationInfo } from './services/DictionaryService';
 import {

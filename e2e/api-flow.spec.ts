@@ -32,10 +32,9 @@ test('should configure API keys and generate a card for "reading"', async ({ pag
 
   // Get API keys from environment variables
   const openaiApiKey = process.env.OPENAI_API_KEY || '';
-  const openrouterApiKey = process.env.OPENROUTER_API_KEY || '';
   
-  if (!openaiApiKey || !openrouterApiKey) {
-    console.warn('Warning: API keys not found in environment variables. Test may fail.');
+  if (!openaiApiKey) {
+    console.warn('Warning: OPENAI_API_KEY not found in environment variables. Test may fail.');
   }
 
   // Navigate to the application
@@ -88,38 +87,12 @@ test('should configure API keys and generate a card for "reading"', async ({ pag
     }
   }
   
-  // Try to find OpenRouter input
-  let openrouterKeyInput: Locator | undefined = undefined;
-  for (const input of inputs) {
-    const id = await input.getAttribute('id') || '';
-    const placeholder = await input.getAttribute('placeholder') || '';
-    const label = await input.getAttribute('aria-label') || '';
-    const name = await input.getAttribute('name') || '';
-    
-    // Check if this input is likely for OpenRouter API key
-    if (id.toLowerCase().includes('openrouter') || 
-        placeholder.toLowerCase().includes('openrouter') || 
-        label.toLowerCase().includes('openrouter') ||
-        name.toLowerCase().includes('openrouter')) {
-      openrouterKeyInput = input;
-      console.log('Found OpenRouter API key input');
-      break;
-    }
-  }
-  
-  // Fill the inputs if found
+  // Fill the input if found
   if (openaiKeyInput) {
     await openaiKeyInput.fill(openaiApiKey);
   } else {
     console.warn('Could not find OpenAI API key input, trying first input');
     if (inputs.length > 0) await inputs[0].fill(openaiApiKey);
-  }
-  
-  if (openrouterKeyInput) {
-    await openrouterKeyInput.fill(openrouterApiKey);
-  } else {
-    console.warn('Could not find OpenRouter API key input, trying second input');
-    if (inputs.length > 1) await inputs[1].fill(openrouterApiKey);
   }
   
   console.log('Saving API settings...');
