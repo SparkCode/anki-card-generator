@@ -1,15 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import APISettingsModal from './components/APISettingsModal';
 import WordForm from './components/WordForm';
 import CardDisplay from './components/CardDisplay';
 import ChatHistory from './components/ChatHistory';
 import CreateCardModal from './components/CreateCardModal';
-import LanguageSelector from './components/LanguageSelector';
-import EnglishLevelSelector from './components/EnglishLevelSelector';
-import { generateAnkiCard } from './services/OpenRouterService';
+import SettingsModal from './components/SettingsModal';
+import Modal from './components/Modal';
+import { generateAnkiCard, DEFAULT_PROMPT_TEMPLATE } from './services/OpenRouterService';
 import { guiAddCards, getDecks, storeAudioData } from './services/AnkiService';
 import { fetchWordInfo, extractPronunciationInfo } from './services/DictionaryService';
-import { hasApiKey, addChatHistoryEntry, getApiKey, setLocalStorageItem, getLocalStorageItem } from './utils/localStorage';
+import {
+  getApiKey, saveApiKey, hasApiKey,
+  getChatHistory, addChatHistoryEntry, clearChatHistory, deleteChatHistoryEntry,
+  getPromptTemplateFromStorage, savePromptTemplateToStorage,
+  getLocalStorageItem, setLocalStorageItem
+} from './utils/localStorage';
 import { hasOpenAIApiKey, generateExampleAudio } from './services/TtsService';
 import audioDB from './services/AudioDBService';
 import './App.css';
@@ -35,14 +40,17 @@ function App() {
   const [showApiSettings, setShowApiSettings] = useState(false);
   const [createCardModalOpen, setCreateCardModalOpen] = useState(false);
   const [cardCreationSuccess, setCardCreationSuccess] = useState(null);
-  const [enableTts, setEnableTts] = useState(getLocalStorageItem('enableTts') !== false); // Default to true
-  const [selectedLanguage, setSelectedLanguage] = useState(
-    getLocalStorageItem('userNativeLanguage') || 'Russian'
-  );
-  const [selectedEnglishLevel, setSelectedEnglishLevel] = useState(
-    getLocalStorageItem('userEnglishLevel') || 'B2 preferably (maybe C1)'
-  );
+  const [enableTts, setEnableTts] = useState(getLocalStorageItem('enableTts') !== false);
+  const [selectedLanguage, setSelectedLanguage] = useState(getLocalStorageItem('userNativeLanguage') || 'Russian');
+  const [selectedEnglishLevel, setSelectedEnglishLevel] = useState(getLocalStorageItem('userEnglishLevel') || 'B2 preferably (maybe C1)');
   const [ttsResult, setTtsResult] = useState(null);
+  const [promptTemplate, setPromptTemplate] = useState('');
+  const [modalContent, setModalContent] = useState(null);
+  const [generatedCardData, setGeneratedCardData] = useState(null);
+  const [entryToDelete, setEntryToDelete] = useState(null);
+  const [showConfirmClear, setShowConfirmClear] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const chatHistoryRef = useRef(null);
   
   // Function to directly open Anki UI with card content
   const openAnkiCardUI = async (content) => {
@@ -109,6 +117,10 @@ function App() {
         }
       })
       .catch(err => console.error('Error cleaning up old audio files:', err));
+
+    // Load prompt template
+    const storedTemplate = getPromptTemplateFromStorage();
+    setPromptTemplate(storedTemplate || DEFAULT_PROMPT_TEMPLATE);
   }, []);
 
   const handleApiSettingsSave = () => {
@@ -116,29 +128,13 @@ function App() {
     setShowApiSettings(false); // Close the API settings section if it's open within settings modal
   };
 
-  const handleOpenSettings = () => {
-    setShowSettings(true);
-  };
-
   const handleCloseSettings = () => {
     setShowSettings(false);
-    setShowApiSettings(false); // Also reset the API settings view when closing settings
-  };
-  
-  const handleToggleTts = () => {
-    const newValue = !enableTts;
-    setEnableTts(newValue);
-    setLocalStorageItem('enableTts', newValue);
   };
 
-  const handleUpdateApiSettings = () => {
-    if (showSettings) {
-      // If settings modal is open, show API settings within it
-      setShowApiSettings(true);
-    } else {
-      // Otherwise open the standalone API settings modal
-      setApiSettingsModalOpen(true);
-    }
+  const handleToggleTts = () => {
+    setEnableTts(!enableTts);
+    setLocalStorageItem('enableTts', !enableTts);
   };
 
   const handleLanguageSelect = (language) => {
@@ -176,7 +172,7 @@ function App() {
   
   // Generate TTS audio for a sentence
   const generateTtsAudio = async (word, sentence) => {
-    if (!hasOpenAIApiKey() || !enableTts || !sentence) {
+    if (!sentence) {
       return null;
     }
     
@@ -268,7 +264,7 @@ function App() {
       let attemptedTts = false;
       let ttsGeneratedSuccessfully = false;
       
-      if (exampleSentence && enableTts && hasOpenAIApiKey()) {
+      if (exampleSentence && enableTts) {
         attemptedTts = true; // Mark that we attempted to generate TTS
         const ttsResult = await generateTtsAudio(word, exampleSentence);
         setTtsResult(ttsResult); // Save TTS result to state
@@ -360,7 +356,7 @@ function App() {
       let attemptedTts = pronunciationInfo?.attemptedTts || false;
       let ttsGeneratedSuccessfully = false;
       
-      if (exampleSentence && enableTts && hasOpenAIApiKey()) {
+      if (exampleSentence && enableTts) {
         attemptedTts = true;
         const ttsResult = await generateTtsAudio(currentWord, exampleSentence);
         setTtsResult(ttsResult); // Save TTS result to state
@@ -446,13 +442,54 @@ function App() {
     }, 5000);
   };
 
+  // Handler for prompt template change
+  const handlePromptTemplateChange = (event) => {
+    setPromptTemplate(event.target.value);
+  };
+
+  // Save the prompt template
+  const handleSavePromptTemplate = () => {
+    savePromptTemplateToStorage(promptTemplate);
+    console.log("Prompt template saved.");
+  };
+
+  const handleResetPromptTemplate = () => {
+    setPromptTemplate(DEFAULT_PROMPT_TEMPLATE);
+    // Maybe save immediately or let user save explicitly
+    // savePromptTemplateToStorage(DEFAULT_PROMPT_TEMPLATE);
+  };
+
+  const handleManageApiKeys = () => {
+    setShowSettings(false); // Close settings modal
+    setShowApiSettings(true); // Open API settings modal
+  };
+
+  const handleConfirmClearHistory = () => {
+    clearChatHistory();
+    // Optionally update state if ChatHistory component relies on it directly
+    // chatHistoryRef.current?.updateHistory?.(); // Example if ChatHistory has an update method
+    setModalContent(null); // Close the modal
+    setShowConfirmClear(false); // Close confirmation state if used
+  };
+
+  const handleConfirmDeleteEntry = () => {
+    if (entryToDelete) {
+      deleteChatHistoryEntry(entryToDelete);
+      // Optionally update state if ChatHistory component relies on it directly
+      // chatHistoryRef.current?.updateHistory?.(); // Example if ChatHistory has an update method
+      setEntryToDelete(null); // Clear the ID
+    }
+    setModalContent(null); // Close the modal
+    setShowConfirmDelete(false); // Close confirmation state if used
+  };
+
   return (
     <div className="App">
       <header className="App-header">
         <h1>📝 Anki Card Generator</h1>
         <button 
           className="settings-button"
-          onClick={handleOpenSettings}
+          onClick={() => setShowSettings(true)}
         >
           ⚙️
         </button>
@@ -489,115 +526,76 @@ function App() {
         </section>
 
         <section className="history-section">
-          <ChatHistory onHistoryItemClick={handleHistoryItemClick} />
+          <ChatHistory
+            ref={chatHistoryRef}
+            onHistoryItemClick={handleHistoryItemClick}
+            onClearHistory={() => {
+              setModalContent('confirmClear');
+              // setShowConfirmClear(true); // Keep or remove based on whether you use this state elsewhere
+            }}
+            onDeleteEntry={(id) => {
+              setEntryToDelete(id);
+              setModalContent('confirmDelete');
+              // setShowConfirmDelete(true); // Keep or remove based on whether you use this state elsewhere
+            }}
+          />
         </section>
       </main>
 
-      {/* Standalone API settings modal (used when first loading app or when settings modal is not open) */}
-      {apiSettingsModalOpen && !showSettings && (
-        <APISettingsModal 
-          isOpen={true}
-          onSave={handleApiSettingsSave} 
-        />
-      )}
-      
-      <CreateCardModal
-        isOpen={createCardModalOpen}
-        onClose={() => setCreateCardModalOpen(false)}
-        cardContent={cardContent}
-        onSuccess={handleCardCreationSuccess}
-        word={currentWord}
+      {/* Render the extracted SettingsModal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={handleCloseSettings}
+        onManageApiKeys={handleManageApiKeys}
+        enableTts={enableTts}
+        onToggleTts={handleToggleTts}
+        selectedLanguage={selectedLanguage}
+        onLanguageSelect={handleLanguageSelect}
+        selectedEnglishLevel={selectedEnglishLevel}
+        onLevelSelect={handleEnglishLevelSelect}
+        promptTemplate={promptTemplate}
+        onPromptTemplateChange={handlePromptTemplateChange}
+        onSavePromptTemplate={handleSavePromptTemplate}
+        onResetPromptTemplate={handleResetPromptTemplate}
       />
 
-      {showSettings && (
-        <div className="settings-modal-overlay">
-          <div className="settings-modal">
-            {!showApiSettings ? (
-              <>
-                <h2>Settings</h2>
-                
-                <div className="settings-section">
-                  <h3>API Settings</h3>
-                  <p>OpenRouter API Key: {getApiKey() ? '••••••••' + getApiKey().slice(-4) : 'Not set'}</p>
-                  <p>OpenAI API Key: {hasOpenAIApiKey() ? '••••••••' : 'Not set'}</p>
-                  <button 
-                    className="button secondary"
-                    onClick={handleUpdateApiSettings}
-                  >
-                    Manage API Keys
-                  </button>
-                </div>
-                
-                <div className="settings-section">
-                  <h3>Text-to-Speech</h3>
-                  <div className="setting-toggle">
-                    <label htmlFor="tts-toggle">Generate example audio using OpenAI TTS</label>
-                    <input
-                      id="tts-toggle"
-                      type="checkbox"
-                      checked={enableTts}
-                      onChange={handleToggleTts}
-                    />
-                  </div>
-                  <p className="help-text">
-                    When enabled, the app will generate audio for example sentences using OpenAI's text-to-speech.
-                    {!hasOpenAIApiKey() && enableTts && (
-                      <span className="warning-text"> OpenAI API key is required for this feature.</span>
-                    )}
-                  </p>
-                </div>
-                
-                <div className="settings-section">
-                  <h3>Language Preferences</h3>
-                  <p>Select your native language for card translations:</p>
-                  <LanguageSelector
-                    selectedLanguage={selectedLanguage}
-                    onLanguageSelect={handleLanguageSelect}
-                    showLabel={false}
-                  />
-                </div>
-                
-                <div className="settings-section">
-                  <h3>English Level</h3>
-                  <p>Specify your English proficiency level:</p>
-                  <EnglishLevelSelector
-                    selectedLevel={selectedEnglishLevel}
-                    onLevelSelect={handleEnglishLevelSelect}
-                    showLabel={false}
-                  />
-                </div>
-                
-                <div className="settings-section">
-                  <h3>About</h3>
-                  <p>This app generates Anki flashcards using OpenRouter API to access Google Gemini 2.0 Flash.</p>
-                  <p>Your API keys are stored only in your browser's local storage.</p>
-                </div>
-                
-                <button 
-                  className="button primary close-button"
-                  onClick={handleCloseSettings}
-                >
-                  Close
-                </button>
-              </>
-            ) : (
-              <div className="api-settings-container">
-                <h2>API Settings</h2>
-                <APISettingsModal 
-                  isOpen={true}
-                  onSave={handleApiSettingsSave}
-                  embedded={true}
-                />
-                <button 
-                  className="button secondary back-button"
-                  onClick={() => setShowApiSettings(false)}
-                >
-                  Back to Settings
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Separate API Settings Modal */}
+      {showApiSettings && (
+        <APISettingsModal
+          isOpen={showApiSettings}
+          onClose={() => setShowApiSettings(false)}
+          onSave={handleApiSettingsSave}
+        />
+      )}
+
+      {/* Other modals (CreateCard, Confirmations) */}
+      {createCardModalOpen && (
+         <CreateCardModal
+            isOpen={createCardModalOpen}
+            onClose={() => setCreateCardModalOpen(false)}
+            cardContent={cardContent}
+            onSuccess={handleCardCreationSuccess}
+            word={currentWord}
+          />
+      )}
+
+      {/* Confirmation Modals - Using modalContent state now */}
+      {modalContent === 'confirmClear' && (
+        <Modal onClose={() => setModalContent(null)}>
+          <h2>Confirm Clear History</h2>
+          <p>Are you sure you want to clear the entire chat history?</p>
+          <button className="button danger" onClick={handleConfirmClearHistory}>Yes, Clear History</button>
+          <button className="button secondary" onClick={() => setModalContent(null)}>Cancel</button>
+        </Modal>
+      )}
+
+      {modalContent === 'confirmDelete' && (
+        <Modal onClose={() => setModalContent(null)}>
+          <h2>Confirm Delete Entry</h2>
+          <p>Are you sure you want to delete this chat entry?</p>
+          <button className="button danger" onClick={handleConfirmDeleteEntry}>Yes, Delete Entry</button>
+          <button className="button secondary" onClick={() => setModalContent(null)}>Cancel</button>
+        </Modal>
       )}
 
       <footer className="App-footer">

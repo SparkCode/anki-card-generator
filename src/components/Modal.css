@@ -1,0 +1,62 @@
+/* Modal Styles */
+.modal-overlay {
+  position: fixed; /* Stay in place */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgba(0, 0, 0, 0.5); /* Black w/ opacity */
+  z-index: 1000; /* Sit on top */
+  display: flex; /* Use flexbox for centering */
+  align-items: center; /* Center vertically */
+  justify-content: center; /* Center horizontally */
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  background-color: var(--background-color); /* Use app's background */
+  color: var(--text-color); /* Use app's text color */
+  margin: auto; /* Automatic margins help centering */
+  padding: 25px 30px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  width: 80%; /* Could be more or less, depending on screen size */
+  max-width: 700px; /* Maximum width */
+  position: relative; /* For positioning the close button */
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  max-height: 90vh; /* Limit height */
+  overflow-y: auto; /* Add scroll for content */
+  animation: slideIn 0.3s ease-out;
+}
+
+.modal-close-button {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  color: var(--text-secondary-color);
+  font-size: 28px;
+  font-weight: bold;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.modal-close-button:hover,
+.modal-close-button:focus {
+  color: var(--text-color);
+  text-decoration: none;
+  outline: none;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+} 

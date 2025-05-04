@@ -136,3 +136,16 @@ export const deleteChatHistoryEntry = (entryId) => {
   const updatedHistory = history.filter(entry => entry.id !== entryId);
   saveChatHistory(updatedHistory);
 };
+
+// --- Prompt Template ---
+const PROMPT_TEMPLATE_STORAGE_KEY = 'ankiGeneratorPromptTemplate';
+
+export const getPromptTemplateFromStorage = () => {
+  return localStorage.getItem(PROMPT_TEMPLATE_STORAGE_KEY);
+};
+
+export const savePromptTemplateToStorage = (template) => {
+  localStorage.setItem(PROMPT_TEMPLATE_STORAGE_KEY, template);
+};
+
+// --- Native Language ---
