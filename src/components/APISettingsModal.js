@@ -78,6 +78,13 @@ const APISettingsModal = ({ onSave, isOpen, embedded = false }) => {
       {successMessage && <div className="success-message">{successMessage}</div>}
       
       <div className="modal-actions">
+          <button 
+            className="button primary" 
+            onClick={handleSave}
+            style={{ marginRight: '10px' }}
+          >
+          Save Settings
+        </button>
         {!embedded && (
           <button 
             className="button secondary" 
@@ -86,12 +93,6 @@ const APISettingsModal = ({ onSave, isOpen, embedded = false }) => {
             Cancel
           </button>
         )}
-        <button 
-          className="button primary" 
-          onClick={handleSave}
-        >
-          Save Settings
-        </button>
       </div>
     </>
   );

@@ -91,7 +91,7 @@ const SettingsModal = ({
           value={promptTemplate}
           onChange={onPromptTemplateChange} // Use the passed handler
           rows="15"
-          style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px' }}
+          style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', padding: '5px' }}
         />
         <button
           className="button secondary"
