@@ -1,5 +1,6 @@
 // Local storage keys
-const API_KEY_STORAGE_KEY = 'openrouter_api_key';
+// Unified API key for OpenAI (used for both chat completions and TTS)
+const API_KEY_STORAGE_KEY = 'openai_api_key';
 const CHAT_HISTORY_STORAGE_KEY = 'anki_chat_history';
 
 /**
@@ -9,19 +10,35 @@ const CHAT_HISTORY_STORAGE_KEY = 'anki_chat_history';
  * @returns {any} - The stored value or null if not found
  */
 export const getLocalStorageItem = (key, parse = true) => {
-  const item = localStorage.getItem(key);
-  if (item === null) return null;
-  
-  if (parse) {
-    try {
-      return JSON.parse(item);
-    } catch (e) {
-      console.warn(`Failed to parse localStorage item '${key}' as JSON. Returning as string.`);
-      return item;
+  try {
+    const item = localStorage.getItem(key);
+    if (item === null) return null;
+    
+    if (parse) {
+      try {
+        const parsedValue = JSON.parse(item);
+        
+        // Log pronunciation info specifically for debugging
+        if (key.startsWith('dictData_') && parsedValue) {
+          console.log('Retrieved localStorage data for:', key.substring(0, 40) + (key.length > 40 ? '...' : ''), {
+            hasPronunciationInfo: !!parsedValue.pronunciationInfo,
+            hasAudioFile: !!parsedValue.ttsAudioFilename,
+            word: parsedValue.word || 'unknown'
+          });
+        }
+        
+        return parsedValue;
+      } catch (e) {
+        console.warn(`Failed to parse localStorage item '${key}' as JSON. Returning as string.`);
+        return item;
+      }
     }
+    
+    return item;
+  } catch (error) {
+    console.error('Error retrieving item from localStorage:', key, error);
+    return null;
   }
-  
-  return item;
 };
 
 /**
@@ -43,7 +60,7 @@ export const setLocalStorageItem = (key, value) => {
 
 /**
  * Save API key to local storage
- * @param {string} apiKey - The OpenRouter API key
+ * @param {string} apiKey - The OpenAI API key
  */
 export const saveApiKey = (apiKey) => {
   localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
@@ -120,3 +137,16 @@ export const deleteChatHistoryEntry = (entryId) => {
   const updatedHistory = history.filter(entry => entry.id !== entryId);
   saveChatHistory(updatedHistory);
 };
+
+// --- Prompt Template ---
+const PROMPT_TEMPLATE_STORAGE_KEY = 'ankiGeneratorPromptTemplate';
+
+export const getPromptTemplateFromStorage = () => {
+  return localStorage.getItem(PROMPT_TEMPLATE_STORAGE_KEY);
+};
+
+export const savePromptTemplateToStorage = (template) => {
+  localStorage.setItem(PROMPT_TEMPLATE_STORAGE_KEY, template);
+};
+
+// --- Native Language ---

@@ -44,8 +44,7 @@ const DeckSelector = ({ selectedDeck, onDeckSelect, disabled = false }) => {
   // Only fetch decks when the component mounts
   useEffect(() => {
     fetchDecks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchDecks]);
 
   return (
     <div className="deck-selector">

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { saveApiKey } from '../utils/localStorage';
 
 /**
- * Modal dialog for setting up OpenRouter API key
+ * Modal dialog for setting up OpenAI API key
  * @param {Object} props - Component props
  * @param {Function} props.onSave - Callback function when API key is saved
  * @param {boolean} props.isOpen - Whether the modal is open
@@ -34,25 +34,25 @@ const APIKeyModal = ({ onSave, isOpen }) => {
       <div className="modal-content">
         <h2>Welcome to Anki Card Generator</h2>
         <p>
-          To generate cards, we need your OpenRouter API key. Your key is stored only in your
+          To generate cards, we need your OpenAI API key. Your key is stored only in your
           browser's local storage and is never sent to our servers.
         </p>
         
         <div className="form-group">
-          <label htmlFor="api-key">OpenRouter API Key</label>
+          <label htmlFor="api-key">OpenAI API Key</label>
           <input
             id="api-key"
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Enter your OpenRouter API key"
+            placeholder="Enter your OpenAI API key"
             className="form-control"
           />
           {error && <div className="error-message">{error}</div>}
           
           <div className="help-text">
-            <p>Don't have an API key? <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">
-              Get one from OpenRouter
+            <p>Don't have an API key? <a href="https://platform.openai.com/account/api-keys" target="_blank" rel="noopener noreferrer">
+              Get one from OpenAI
             </a></p>
           </div>
         </div>

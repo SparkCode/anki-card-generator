@@ -10,9 +10,6 @@ marked.setOptions({
   headerIds: false
 });
 
-// For audio file handling
-const AUDIO_FETCH_TIMEOUT = 10000; // 10 seconds timeout for audio downloads
-
 // Constants
 const API_URL = 'http://127.0.0.1:8765'; // Direct AnkiConnect URL
 const API_VERSION = 6;
@@ -450,50 +447,55 @@ export const getNoteInfo = async (noteId) => {
  */
 export const fetchAudioAsBase64 = async (audioUrl) => {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), AUDIO_FETCH_TIMEOUT);
+    // Keep track of whether a response was found
+    let response = null;
     
-    // First try direct access - this may work if no CORS restrictions
-    let response;
-    let errorMessage = '';
-    
+    // First try directly fetching the URL
     try {
+      console.log(`Attempting to fetch audio directly from: ${audioUrl}`);
       response = await fetch(audioUrl, { 
-        signal: controller.signal,
-        mode: 'cors'
+        method: 'GET',
+        headers: { 'User-Agent': 'AnkiCardGenerator/1.0' }
       });
+      console.log(`Direct fetch result: ${response.status} ${response.statusText}`);
     } catch (directError) {
-      console.log('Direct fetch failed, trying CORS proxy:', directError);
-      errorMessage = directError.message;
-      
-      // If direct access fails, try multiple CORS proxies
+      console.log(`Direct fetch failed: ${directError.message}`);
+    }
+    
+    // If direct fetch fails, try using CORS proxies
+    if (!response || !response.ok) {
       const proxyUrls = [
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(audioUrl)}`,
+        `https://corsproxy.io/?${encodeURIComponent(audioUrl)}`,
         `https://cors-anywhere.herokuapp.com/${audioUrl}`,
-        `https://corsproxy.io/?${encodeURIComponent(audioUrl)}`
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(audioUrl)}`
       ];
       
-      // Try each proxy until one works
       for (const proxyUrl of proxyUrls) {
+        if (response && response.ok) break;
+        
         try {
-          response = await fetch(proxyUrl, { 
-            signal: controller.signal,
-            headers: {
-              'Origin': window.location.origin,
-            }
+          console.log(`Attempting to fetch audio via proxy: ${proxyUrl}`);
+          const timeoutId = setTimeout(() => {
+            console.log(`Proxy fetch timed out: ${proxyUrl}`);
+          }, 5000);
+          
+          response = await fetch(proxyUrl, {
+            method: 'GET',
+            headers: { 'User-Agent': 'AnkiCardGenerator/1.0' }
           });
           
+          clearTimeout(timeoutId);
+          console.log(`Proxy fetch result: ${response.status} ${response.statusText}`);
+          
           if (response.ok) {
-            console.log('Successfully fetched audio with proxy:', proxyUrl);
-            break; // Found a working proxy
+            console.log(`Successfully fetched audio via proxy: ${proxyUrl}`);
+            break;
           }
         } catch (proxyError) {
           console.log(`Proxy ${proxyUrl} failed:`, proxyError);
-          errorMessage += ` | Proxy error: ${proxyError.message}`;
         }
       }
     }
-    clearTimeout(timeoutId);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch audio: ${response.status} ${response.statusText}`);

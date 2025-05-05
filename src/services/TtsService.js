@@ -5,7 +5,7 @@
 import { getLocalStorageItem } from '../utils/localStorage';
 
 // Available voices from OpenAI's TTS API
-const VOICES = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'];
+const VOICES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer'];
 
 // TTS model options
 const MODELS = {

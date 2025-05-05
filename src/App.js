@@ -1,16 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import APISettingsModal from './components/APISettingsModal';
 import WordForm from './components/WordForm';
 import CardDisplay from './components/CardDisplay';
 import ChatHistory from './components/ChatHistory';
 import CreateCardModal from './components/CreateCardModal';
-import LanguageSelector from './components/LanguageSelector';
-import EnglishLevelSelector from './components/EnglishLevelSelector';
-import { generateAnkiCard } from './services/OpenRouterService';
+import SettingsModal from './components/SettingsModal';
+import Modal from './components/Modal';
+import { generateAnkiCard, DEFAULT_PROMPT_TEMPLATE } from './services/OpenAIChatService';
 import { guiAddCards, getDecks, storeAudioData } from './services/AnkiService';
 import { fetchWordInfo, extractPronunciationInfo } from './services/DictionaryService';
-import { hasApiKey, addChatHistoryEntry, getApiKey, setLocalStorageItem, getLocalStorageItem } from './utils/localStorage';
-import { hasOpenAIApiKey, generateExampleAudio, setOpenAIApiKey } from './services/TtsService';
+import {
+  getApiKey, saveApiKey, hasApiKey,
+  getChatHistory, addChatHistoryEntry, clearChatHistory, deleteChatHistoryEntry,
+  getPromptTemplateFromStorage, savePromptTemplateToStorage,
+  getLocalStorageItem, setLocalStorageItem
+} from './utils/localStorage';
+import { hasOpenAIApiKey, generateExampleAudio } from './services/TtsService';
+import audioDB from './services/AudioDBService';
 import './App.css';
 const { extractAiExampleSentence } = require('./utils/extractors');
 
@@ -23,8 +29,13 @@ const generateDictDataKey = (sentence) => {
 };
 
 function App() {
-  const [apiSettingsModalOpen, setApiSettingsModalOpen] = useState(false);
+  const [inputText, setInputText] = useState('');
+  const [ankiCards, setAnkiCards] = useState([]);
+  const [apiKey, setApiKey] = useState('');
+  const [chatHistory, setChatHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [apiSettingsModalOpen, setApiSettingsModalOpen] = useState(false);
+  const [promptTemplate, setPromptTemplate] = useState('');
   const [error, setError] = useState('');
   const [cardContent, setCardContent] = useState('');
   const [currentWord, setCurrentWord] = useState(''); 
@@ -34,15 +45,15 @@ function App() {
   const [showApiSettings, setShowApiSettings] = useState(false);
   const [createCardModalOpen, setCreateCardModalOpen] = useState(false);
   const [cardCreationSuccess, setCardCreationSuccess] = useState(null);
-  const [enableTts, setEnableTts] = useState(getLocalStorageItem('enableTts') !== false); // Default to true
-  const [selectedLanguage, setSelectedLanguage] = useState(
-    getLocalStorageItem('userNativeLanguage') || 'Russian'
-  );
-  const [selectedEnglishLevel, setSelectedEnglishLevel] = useState(
-    getLocalStorageItem('userEnglishLevel') || 'B2 preferably (maybe C1)'
-  );
+  const [enableTts, setEnableTts] = useState(getLocalStorageItem('enableTts') !== false);
+  const [selectedLanguage, setSelectedLanguage] = useState(getLocalStorageItem('userNativeLanguage') || 'Russian');
+  const [selectedEnglishLevel, setSelectedEnglishLevel] = useState(getLocalStorageItem('userEnglishLevel') || 'B2 preferably (maybe C1)');
   const [ttsResult, setTtsResult] = useState(null);
-  
+  const [modalContent, setModalContent] = useState(null);
+  const [entryToDelete, setEntryToDelete] = useState(null);
+
+  const chatHistoryRef = useRef(null);
+
   // Function to directly open Anki UI with card content
   const openAnkiCardUI = async (content) => {
     try {
@@ -51,7 +62,6 @@ function App() {
       
       // Try to get stored pronunciation info for the current word and example sentence
       let pronunciationInfo = null;
-      let ttsAudioFilename = null;
       
       // Look for dictionary data based on the extracted example sentence from the content
       const aiExampleSentence = extractAiExampleSentence(content);
@@ -100,36 +110,33 @@ function App() {
     if (!hasApiKey()) {
       setApiSettingsModalOpen(true);
     }
+    
+    // Clean up old audio files (keep files from last 30 days)
+    audioDB.cleanupOldFiles(30)
+      .then(deletedCount => {
+        if (deletedCount > 0) {
+          console.log(`Cleaned up ${deletedCount} old audio files`);
+        }
+      })
+      .catch(err => console.error('Error cleaning up old audio files:', err));
+
+    // Load prompt template
+    const storedTemplate = getPromptTemplateFromStorage();
+    setPromptTemplate(storedTemplate || DEFAULT_PROMPT_TEMPLATE);
   }, []);
 
   const handleApiSettingsSave = () => {
     setApiSettingsModalOpen(false);
-    setShowApiSettings(false); // Close the API settings section if it's open within settings modal
-  };
-
-  const handleOpenSettings = () => {
-    setShowSettings(true);
+    setShowApiSettings(false);
   };
 
   const handleCloseSettings = () => {
     setShowSettings(false);
-    setShowApiSettings(false); // Also reset the API settings view when closing settings
-  };
-  
-  const handleToggleTts = () => {
-    const newValue = !enableTts;
-    setEnableTts(newValue);
-    setLocalStorageItem('enableTts', newValue);
   };
 
-  const handleUpdateApiSettings = () => {
-    if (showSettings) {
-      // If settings modal is open, show API settings within it
-      setShowApiSettings(true);
-    } else {
-      // Otherwise open the standalone API settings modal
-      setApiSettingsModalOpen(true);
-    }
+  const handleToggleTts = () => {
+    setEnableTts(!enableTts);
+    setLocalStorageItem('enableTts', !enableTts);
   };
 
   const handleLanguageSelect = (language) => {
@@ -167,20 +174,24 @@ function App() {
   
   // Generate TTS audio for a sentence
   const generateTtsAudio = async (word, sentence) => {
-    if (!hasOpenAIApiKey() || !enableTts || !sentence) {
+    if (!sentence) {
       return null;
     }
     
     try {
       console.log('Generating TTS audio for:', sentence);
+      
       const { filename, audioData } = await generateExampleAudio(word, sentence);
       
       // Store in Anki
       await storeAudioData(audioData, filename);
       
-      // Create a blob URL for playback in the browser
+      // Create audio blob for playback
       const audioBlob = new Blob([audioData], { type: 'audio/mp3' });
       const audioBlobUrl = URL.createObjectURL(audioBlob);
+      
+      // Store in AudioDBService
+      await audioDB.storeAudio(word, sentence, audioBlob);
       
       console.log('TTS audio generated successfully as:', filename, audioBlobUrl);
       
@@ -201,7 +212,8 @@ function App() {
       return {
         filename,
         previewUrl: audioBlobUrl,
-        success: true
+        success: true,
+        fromCache: false
       };
     } catch (error) {
       console.error('Failed to generate TTS audio:', error);
@@ -219,7 +231,7 @@ function App() {
     setCurrentWord(word);
     setCurrentContext(context);
     setCurrentDeck(selectedDeck);
-    setTtsResult(null); // Reset TTS result
+    setTtsResult(null);
     
     try {
       // First, try to fetch dictionary data for the word
@@ -241,7 +253,7 @@ function App() {
       }
       
       // Generate the card with the pronunciation info if available
-      const result = await generateAnkiCard(word, context, selectedLanguage, selectedEnglishLevel, pronunciationInfo);
+      const result = await generateAnkiCard(word, context, selectedLanguage, selectedEnglishLevel, pronunciationInfo, selectedDeck);
       setCardContent(result.content);
       
       // Extract example sentence from the AI-generated card (this is preferred over dictionary)
@@ -251,18 +263,16 @@ function App() {
       }
       
       // Generate TTS audio if enabled
-      let ttsPreviewUrl = null;
       let attemptedTts = false;
       let ttsGeneratedSuccessfully = false;
       
-      if (exampleSentence && enableTts && hasOpenAIApiKey()) {
+      if (exampleSentence && enableTts) {
         attemptedTts = true; // Mark that we attempted to generate TTS
         const ttsResult = await generateTtsAudio(word, exampleSentence);
-        setTtsResult(ttsResult); // Save TTS result to state
+        setTtsResult(ttsResult);
         
         if (ttsResult && ttsResult.success) {
           ttsAudioFilename = ttsResult.filename;
-          ttsPreviewUrl = ttsResult.previewUrl;
           ttsGeneratedSuccessfully = true;
         }
       }
@@ -278,9 +288,7 @@ function App() {
           },
           exampleSentence,
           ttsAudioFilename,
-          word, // Store the word as well for reverse lookups
-          // Don't store blob URLs in localStorage as they don't persist between sessions
-          // Instead we'll keep track of whether audio generation succeeded
+          word,
           timestamp: Date.now()
         });
       }
@@ -315,7 +323,7 @@ function App() {
     setIsLoading(true);
     setError('');
     setCardContent('');
-    setTtsResult(null); // Reset TTS result
+    setTtsResult(null);
     
     try {
       // First, check if we already have dictionary data for this word
@@ -335,7 +343,7 @@ function App() {
       }
       
       // Generate the card with pronunciation info if available
-      const result = await generateAnkiCard(currentWord, currentContext, selectedLanguage, selectedEnglishLevel, pronunciationInfo);
+      const result = await generateAnkiCard(currentWord, currentContext, selectedLanguage, selectedEnglishLevel, pronunciationInfo, currentDeck);
       setCardContent(result.content);
       
       // Extract example sentence from the AI-generated card (this is preferred over dictionary)
@@ -345,18 +353,16 @@ function App() {
       }
       
       // Generate TTS audio if enabled and not already available, or if we have a new AI example
-      let ttsPreviewUrl = null;
       let attemptedTts = pronunciationInfo?.attemptedTts || false;
       let ttsGeneratedSuccessfully = false;
       
-      if (exampleSentence && enableTts && hasOpenAIApiKey()) {
+      if (exampleSentence && enableTts) {
         attemptedTts = true;
         const ttsResult = await generateTtsAudio(currentWord, exampleSentence);
-        setTtsResult(ttsResult); // Save TTS result to state
+        setTtsResult(ttsResult);
         
         if (ttsResult && ttsResult.success) {
           ttsAudioFilename = ttsResult.filename;
-          ttsPreviewUrl = ttsResult.previewUrl;
           ttsGeneratedSuccessfully = true;
         }
       }
@@ -372,7 +378,7 @@ function App() {
           },
           exampleSentence,
           ttsAudioFilename,
-          word: currentWord, // Store the word as well for reference
+          word: currentWord,
           timestamp: Date.now()
         });
       }
@@ -436,13 +442,48 @@ function App() {
     }, 5000);
   };
 
+  // Handler for prompt template change
+  const handlePromptTemplateChange = (event) => {
+    setPromptTemplate(event.target.value);
+  };
+
+  // Save the prompt template
+  const handleSavePromptTemplate = () => {
+    savePromptTemplateToStorage(promptTemplate);
+    console.log("Prompt template saved.");
+  };
+
+  const handleResetPromptTemplate = () => {
+    setPromptTemplate(DEFAULT_PROMPT_TEMPLATE);
+    // Maybe save immediately or let user save explicitly
+    // savePromptTemplateToStorage(DEFAULT_PROMPT_TEMPLATE);
+  };
+
+  const handleManageApiKeys = () => {
+    setShowSettings(false);
+    setShowApiSettings(true);
+  };
+
+  const handleConfirmClearHistory = () => {
+    clearChatHistory();
+    setModalContent(null);
+  };
+
+  const handleConfirmDeleteEntry = () => {
+    if (entryToDelete) {
+      deleteChatHistoryEntry(entryToDelete);
+      setEntryToDelete(null);
+    }
+    setModalContent(null);
+  };
+
   return (
     <div className="App">
       <header className="App-header">
         <h1>📝 Anki Card Generator</h1>
         <button 
           className="settings-button"
-          onClick={handleOpenSettings}
+          onClick={() => setShowSettings(true)}
         >
           ⚙️
         </button>
@@ -479,121 +520,80 @@ function App() {
         </section>
 
         <section className="history-section">
-          <ChatHistory onHistoryItemClick={handleHistoryItemClick} />
+          <ChatHistory
+            ref={chatHistoryRef}
+            onHistoryItemClick={handleHistoryItemClick}
+            onClearHistory={() => {
+              setModalContent('confirmClear');
+            }}
+            onDeleteEntry={(id) => {
+              setEntryToDelete(id);
+              setModalContent('confirmDelete');
+            }}
+          />
         </section>
       </main>
 
-      {/* Standalone API settings modal (used when first loading app or when settings modal is not open) */}
-      {apiSettingsModalOpen && !showSettings && (
-        <APISettingsModal 
-          isOpen={true}
-          onSave={handleApiSettingsSave} 
-        />
-      )}
-      
-      <CreateCardModal
-        isOpen={createCardModalOpen}
-        onClose={() => setCreateCardModalOpen(false)}
-        cardContent={cardContent}
-        onSuccess={handleCardCreationSuccess}
-        word={currentWord}
+      {/* Render the extracted SettingsModal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={handleCloseSettings}
+        onManageApiKeys={handleManageApiKeys}
+        enableTts={enableTts}
+        onToggleTts={handleToggleTts}
+        selectedLanguage={selectedLanguage}
+        onLanguageSelect={handleLanguageSelect}
+        selectedEnglishLevel={selectedEnglishLevel}
+        onLevelSelect={handleEnglishLevelSelect}
+        promptTemplate={promptTemplate}
+        onPromptTemplateChange={handlePromptTemplateChange}
+        onSavePromptTemplate={handleSavePromptTemplate}
+        onResetPromptTemplate={handleResetPromptTemplate}
       />
 
-      {showSettings && (
-        <div className="settings-modal-overlay">
-          <div className="settings-modal">
-            {!showApiSettings ? (
-              <>
-                <h2>Settings</h2>
-                
-                <div className="settings-section">
-                  <h3>API Settings</h3>
-                  <p>OpenRouter API Key: {getApiKey() ? '••••••••' + getApiKey().slice(-4) : 'Not set'}</p>
-                  <p>OpenAI API Key: {hasOpenAIApiKey() ? '••••••••' : 'Not set'}</p>
-                  <button 
-                    className="button secondary"
-                    onClick={handleUpdateApiSettings}
-                  >
-                    Manage API Keys
-                  </button>
-                </div>
-                
-                <div className="settings-section">
-                  <h3>Text-to-Speech</h3>
-                  <div className="setting-toggle">
-                    <label htmlFor="tts-toggle">Generate example audio using OpenAI TTS</label>
-                    <input
-                      id="tts-toggle"
-                      type="checkbox"
-                      checked={enableTts}
-                      onChange={handleToggleTts}
-                    />
-                  </div>
-                  <p className="help-text">
-                    When enabled, the app will generate audio for example sentences using OpenAI's text-to-speech.
-                    {!hasOpenAIApiKey() && enableTts && (
-                      <span className="warning-text"> OpenAI API key is required for this feature.</span>
-                    )}
-                  </p>
-                </div>
-                
-                <div className="settings-section">
-                  <h3>Language Preferences</h3>
-                  <p>Select your native language for card translations:</p>
-                  <LanguageSelector
-                    selectedLanguage={selectedLanguage}
-                    onLanguageSelect={handleLanguageSelect}
-                    showLabel={false}
-                  />
-                </div>
-                
-                <div className="settings-section">
-                  <h3>English Level</h3>
-                  <p>Specify your English proficiency level:</p>
-                  <EnglishLevelSelector
-                    selectedLevel={selectedEnglishLevel}
-                    onLevelSelect={handleEnglishLevelSelect}
-                    showLabel={false}
-                  />
-                </div>
-                
-                <div className="settings-section">
-                  <h3>About</h3>
-                  <p>This app generates Anki flashcards using OpenRouter API to access Google Gemini 2.0 Flash.</p>
-                  <p>Your API keys are stored only in your browser's local storage.</p>
-                </div>
-                
-                <button 
-                  className="button primary close-button"
-                  onClick={handleCloseSettings}
-                >
-                  Close
-                </button>
-              </>
-            ) : (
-              <div className="api-settings-container">
-                <h2>API Settings</h2>
-                <APISettingsModal 
-                  isOpen={true}
-                  onSave={handleApiSettingsSave}
-                  embedded={true}
-                />
-                <button 
-                  className="button secondary back-button"
-                  onClick={() => setShowApiSettings(false)}
-                >
-                  Back to Settings
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Separate API Settings Modal */}
+      {showApiSettings && (
+        <APISettingsModal
+          isOpen={showApiSettings}
+          onClose={() => setShowApiSettings(false)}
+          onSave={handleApiSettingsSave}
+        />
+      )}
+
+      {/* Other modals (CreateCard, Confirmations) */}
+      {createCardModalOpen && (
+         <CreateCardModal
+            isOpen={createCardModalOpen}
+            onClose={() => setCreateCardModalOpen(false)}
+            cardContent={cardContent}
+            onSuccess={handleCardCreationSuccess}
+            word={currentWord}
+          />
+      )}
+
+      {/* Confirmation Modals - Using modalContent state now */}
+      {modalContent === 'confirmClear' && (
+        <Modal onClose={() => setModalContent(null)}>
+          <h2>Confirm Clear History</h2>
+          <p>Are you sure you want to clear the entire chat history?</p>
+          <button className="button danger" onClick={handleConfirmClearHistory}>Yes, Clear History</button>
+          <button className="button secondary" onClick={() => setModalContent(null)}>Cancel</button>
+        </Modal>
+      )}
+
+      {modalContent === 'confirmDelete' && (
+        <Modal onClose={() => setModalContent(null)}>
+          <h2>Confirm Delete Entry</h2>
+          <p>Are you sure you want to delete this chat entry?</p>
+          <button className="button danger" onClick={handleConfirmDeleteEntry}>Yes, Delete Entry</button>
+          <button className="button secondary" onClick={() => setModalContent(null)}>Cancel</button>
+        </Modal>
       )}
 
       <footer className="App-footer">
         <p>Made with ❤️ for language learners</p>
         <p>
-          <a href="https://github.com/username/anki-card-generator" target="_blank" rel="noopener noreferrer">
+          <a href="https://github.com/SparkCode/anki-card-generator" target="_blank" rel="noopener noreferrer">
             View on GitHub
           </a>
         </p>

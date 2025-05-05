@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { saveApiKey, getApiKey } from '../utils/localStorage';
-import { saveOpenAIApiKey, getOpenAIApiKey, hasOpenAIApiKey } from '../services/TtsService';
+import { saveOpenAIApiKey, getOpenAIApiKey } from '../services/TtsService';
 
 /**
  * Modal dialog for managing API settings
@@ -10,7 +10,6 @@ import { saveOpenAIApiKey, getOpenAIApiKey, hasOpenAIApiKey } from '../services/
  * @param {boolean} props.embedded - Whether the component is embedded in another modal
  */
 const APISettingsModal = ({ onSave, isOpen, embedded = false }) => {
-  const [openRouterKey, setOpenRouterKey] = useState('');
   const [openAIKey, setOpenAIKey] = useState('');
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -18,11 +17,8 @@ const APISettingsModal = ({ onSave, isOpen, embedded = false }) => {
   // Load existing API keys when the modal opens
   useEffect(() => {
     if (isOpen) {
-      const existingOpenRouterKey = getApiKey() || '';
-      const existingOpenAIKey = getOpenAIApiKey() || '';
-      
-      setOpenRouterKey(existingOpenRouterKey);
-      setOpenAIKey(existingOpenAIKey);
+      const existingKey = getApiKey() || getOpenAIApiKey() || '';
+      setOpenAIKey(existingKey);
       setError('');
       setSuccessMessage('');
     }
@@ -31,20 +27,14 @@ const APISettingsModal = ({ onSave, isOpen, embedded = false }) => {
   const handleSave = () => {
     try {
       // Check if at least one API key is provided
-      if (!openRouterKey.trim() && !openAIKey.trim()) {
-        setError('Please enter at least one API key');
+      if (!openAIKey.trim()) {
+        setError('Please enter your OpenAI API key');
         return;
       }
 
-      // Save OpenRouter API key if provided
-      if (openRouterKey.trim()) {
-        saveApiKey(openRouterKey.trim());
-      }
-      
-      // Save OpenAI API key if provided
-      if (openAIKey.trim()) {
-        saveOpenAIApiKey(openAIKey.trim());
-      }
+      const key = openAIKey.trim();
+      saveApiKey(key); // Save for card generation
+      saveOpenAIApiKey(key); // Save for TTS
       
       setSuccessMessage('API settings saved successfully!');
       setTimeout(() => {
@@ -68,25 +58,7 @@ const APISettingsModal = ({ onSave, isOpen, embedded = false }) => {
       </p>
       
       <div className="form-group">
-        <label htmlFor="openrouter-key">OpenRouter API Key (for card generation)</label>
-        <input
-          id="openrouter-key"
-          type="password"
-          value={openRouterKey}
-          onChange={(e) => setOpenRouterKey(e.target.value)}
-          placeholder="Enter your OpenRouter API key"
-          className="form-control"
-        />
-        
-        <div className="help-text">
-          <p>Don't have an OpenRouter API key? <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">
-            Get one from OpenRouter
-          </a></p>
-        </div>
-      </div>
-      
-      <div className="form-group">
-        <label htmlFor="openai-key">OpenAI API Key (for audio generation)</label>
+        <label htmlFor="openai-key">OpenAI API Key</label>
         <input
           id="openai-key"
           type="password"
@@ -95,7 +67,6 @@ const APISettingsModal = ({ onSave, isOpen, embedded = false }) => {
           placeholder="Enter your OpenAI API key"
           className="form-control"
         />
-        
         <div className="help-text">
           <p>Don't have an OpenAI API key? <a href="https://platform.openai.com/account/api-keys" target="_blank" rel="noopener noreferrer">
             Get one from OpenAI
@@ -107,6 +78,13 @@ const APISettingsModal = ({ onSave, isOpen, embedded = false }) => {
       {successMessage && <div className="success-message">{successMessage}</div>}
       
       <div className="modal-actions">
+          <button 
+            className="button primary" 
+            onClick={handleSave}
+            style={{ marginRight: '10px' }}
+          >
+          Save Settings
+        </button>
         {!embedded && (
           <button 
             className="button secondary" 
@@ -115,12 +93,6 @@ const APISettingsModal = ({ onSave, isOpen, embedded = false }) => {
             Cancel
           </button>
         )}
-        <button 
-          className="button primary" 
-          onClick={handleSave}
-        >
-          Save Settings
-        </button>
       </div>
     </>
   );
