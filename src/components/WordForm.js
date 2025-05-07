@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import DeckSelector from './DeckSelector';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/localStorage';
 
@@ -16,10 +16,10 @@ const WordForm = ({ onSubmit, isLoading }) => {
     getLocalStorageItem('lastSelectedDeck') || ''
   );
 
-  const handleDeckSelect = (deck) => {
+  const handleDeckSelect = useCallback((deck) => {
     setSelectedDeck(deck);
     setLocalStorageItem('lastSelectedDeck', deck);
-  };
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
