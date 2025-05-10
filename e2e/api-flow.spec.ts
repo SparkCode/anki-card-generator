@@ -52,11 +52,6 @@ test('should configure API keys and generate a card for "reading"', async ({ pag
   
   console.log('Opening API settings...');
   
-  // Find any button that contains text related to settings/configuration
-  await page.locator('.settings-button').first().click();
-  
-  console.log('Waiting for settings modal...');
-  
   // Wait for the modal or form to appear - using multiple potential selectors
   await page.waitForSelector('.modal, .dialog, form, div[role="dialog"], div[class*="modal"], div[class*="dialog"]', 
     { state: 'visible', timeout: 10000 });

@@ -108,7 +108,7 @@ function App() {
   // Check if API key exists when the component mounts
   useEffect(() => {
     if (!hasApiKey()) {
-      setApiSettingsModalOpen(true);
+      setShowSettings(true);
     }
     
     // Clean up old audio files (keep files from last 30 days)
@@ -477,6 +477,8 @@ function App() {
     setModalContent(null);
   };
 
+  const shouldShowApiModal = apiSettingsModalOpen || showApiSettings;
+
   return (
     <div className="App">
       <header className="App-header">
@@ -552,10 +554,10 @@ function App() {
       />
 
       {/* Separate API Settings Modal */}
-      {showApiSettings && (
+      {shouldShowApiModal && (
         <APISettingsModal
-          isOpen={showApiSettings}
-          onClose={() => setShowApiSettings(false)}
+          isOpen={shouldShowApiModal}
+          onClose={handleApiSettingsSave}
           onSave={handleApiSettingsSave}
         />
       )}

@@ -21,7 +21,7 @@ You need to update the AnkiConnect configuration to allow requests from the Reac
   "webCorsOriginList": [
     "http://localhost:3000",
     "http://localhost:3001",
-    "https://your-deployed-site.com"  // If you deploy your app
+    "https://sparkcode.github.io"  // deployed app
   ]
 }
 ```
