@@ -1,11 +1,10 @@
 # Anki Card Generator
 
-A web application that helps language learners generate high-quality Anki flashcards using artificial intelligence. This tool leverages Claude 3.7 Sonnet via the OpenRouter API to create well-structured, pedagogically sound flashcards for vocabulary learning, with additional features like audio pronunciation through text-to-speech.
+A web application that helps language learners generate high-quality Anki flashcards using artificial intelligence. This tool leverages OpenAI ChatGPT 4o to create well-structured, pedagogically sound flashcards for vocabulary learning, with additional features like audio pronunciation through text-to-speech.
 
 ## Features
 
 - **AI-Powered Card Generation**: Enter an English word and optional context to generate a complete Anki card
-- **B2-C1 Level Focus**: Cards are designed for intermediate to advanced English learners
 - **Standardized Format**: Each card includes:
   - Front side: Sentence with target word in bold + pronunciation + part of speech info
   - Back side: Definition, translations in your native language, usage notes, synonyms/antonyms, and etymology
@@ -20,8 +19,7 @@ A web application that helps language learners generate high-quality Anki flashc
 
 ### Prerequisites
 
-- An OpenRouter API key (available from [OpenRouter](https://openrouter.ai/keys))
-- Optional: OpenAI API key for text-to-speech functionality
+- An OpenAI API key (required for AI card generation and text-to-speech). You can obtain one from [OpenAI](https://platform.openai.com/api-keys).
 - Anki desktop app with the AnkiConnect add-on installed (add-on code: 2055492159)
 - A modern web browser
 
@@ -32,8 +30,8 @@ A web application that helps language learners generate high-quality Anki flashc
    - Configure AnkiConnect to allow connections (see [DIRECT-CONNECTION.md](DIRECT-CONNECTION.md))
    - Keep Anki running when using the application
 
-2. Visit the application at [https://sebeldin.github.io/anki-playground](https://sebeldin.github.io/anki-playground)
-3. Enter your OpenRouter API key when prompted (stored only in your browser)
+2. Visit the application at [https://sparkcode.github.io/anki-card-generator/](https://sparkcode.github.io/anki-card-generator/)
+3. Enter your OpenAI API key when prompted (stored only in your browser)
 4. Type an English word you want to learn
 5. Optionally add context about how you'd like to use the word
 6. Click "Generate Card" and wait for the AI to create your card
@@ -72,7 +70,7 @@ _**Comments**: Commonly used in travel (train, plane, ship) and storage contexts
 The application now supports adding audio pronunciations to your Anki cards:
 
 1. Generate a card for your target word
-2. If you've provided an OpenAI API key, you can generate audio for the example sentence
+2. Audio for the example sentence will be generated using your OpenAI API key.
 3. The audio will be automatically added to your Anki card when using the "Create in Anki" feature
 4. You can preview the audio before adding it to your card
 
@@ -106,7 +104,7 @@ npm run deploy
 ## Technologies Used
 
 - React for the user interface
-- OpenRouter API (Claude 3.7 Sonnet) for AI-generated content
+- OpenAI API (ChatGPT 4o) for AI-generated content
 - OpenAI API for text-to-speech functionality
 - AnkiConnect API for integration with Anki
 - localStorage for persistent storage
@@ -119,5 +117,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Acknowledgments
 
 - Built for language learners using Anki's spaced repetition system
-- Powered by Anthropic's Claude 3.7 Sonnet via OpenRouter
+- Powered by OpenAI's ChatGPT 4o
 - Text-to-speech capabilities provided by OpenAI's TTS API
