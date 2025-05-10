@@ -53,7 +53,7 @@ test('should configure API keys and generate a card for "reading"', async ({ pag
   console.log('Opening API settings...');
   
   // Find any button that contains text related to settings/configuration
-  await page.locator('button:has-text("Settings"), button:has-text("API"), button:has-text("Config"), button[aria-label*="settings" i], button[title*="settings" i]').first().click();
+  await page.locator('.settings-button').first().click();
   
   console.log('Waiting for settings modal...');
   
@@ -67,6 +67,8 @@ test('should configure API keys and generate a card for "reading"', async ({ pag
   // First, look for all visible input elements and filter for likely API key inputs
   const inputs = await page.locator('input:visible').all();
   console.log(`Found ${inputs.length} visible input fields`);
+
+  await page.locator('.settings-section button').first().click();
   
   // Try to find OpenAI input
   let openaiKeyInput: Locator | undefined = undefined;
@@ -199,35 +201,11 @@ test('should configure API keys and generate a card for "reading"', async ({ pag
   }
   
   // Enter the example sentence - try to find the sentence input
-  const textareas = await page.locator('textarea').all();
-  let sentenceInput: Locator | undefined = undefined;
-  
-  for (const textarea of textareas) {
-    const id = await textarea.getAttribute('id') || '';
-    const placeholder = await textarea.getAttribute('placeholder') || '';
-    const label = await textarea.getAttribute('aria-label') || '';
-    
-    if (id.toLowerCase().includes('sentence') || 
-        placeholder.toLowerCase().includes('sentence') || 
-        label.toLowerCase().includes('sentence') ||
-        id.toLowerCase().includes('example') || 
-        placeholder.toLowerCase().includes('example') || 
-        label.toLowerCase().includes('example')) {
-      sentenceInput = textarea;
-      break;
-    }
-  }
+  const sentenceInput = await page.locator('#context-input');
   
   if (sentenceInput) {
     await sentenceInput.fill('WHOOP measures stress by taking a **reading** /ˈriːdɪŋ/ of your heart rate.');
     console.log('Filled sentence input');
-  } else {
-    console.warn('Could not find sentence input');
-    // Try the first textarea as fallback
-    if (textareas.length > 0) {
-      await textareas[0].fill('WHOOP measures stress by taking a **reading** /ˈriːdɪŋ/ of your heart rate.');
-      console.log('Used fallback for sentence input');
-    }
   }
   
   console.log('Generating card...');
@@ -237,7 +215,7 @@ test('should configure API keys and generate a card for "reading"', async ({ pag
   
   // Find and click the generate button - try multiple potential button texts
   try {
-    const generateButton = await page.locator('button:has-text("Generate"), button:has-text("Create"), button:has-text("Submit"), button:has-text("Card")').first();
+    const generateButton = await page.locator('.word-form button');
     await generateButton.click({ timeout: 5000, force: true });
     console.log('Clicked Generate button');
   } catch (error) {
