@@ -107,12 +107,12 @@ const getCurrentPromptTemplate = () => {
  * @param {string} deckName - The name of the deck
  * @returns {string} - The formatted prompt
  */
-const getPromptText = (word, context = '', nativeLanguage = 'Russian', englishLevel = 'B2 preferably (maybe C1)', pronunciationInfo = null, deckName = '') => {
+const getPromptText = (word, context = '', nativeLanguage = 'Russian', englishLevel = 'Upper intermediate', pronunciationInfo = null, deckName = '') => {
   const contextPart = context ? `\nContext for this word: ${context}` : '';
   // Use the language directly, default to Russian if empty
   const languageName = nativeLanguage && nativeLanguage.trim() ? nativeLanguage.trim() : 'Russian';
   // Use the provided English level or default
-  const level = englishLevel && englishLevel.trim() ? englishLevel.trim() : 'B2 preferably (maybe C1)';
+  const level = englishLevel && englishLevel.trim() ? englishLevel.trim() : 'Upper intermediate';
 
   const deckContext = deckName ? `\nI am currently studying the deck named: "${deckName}". Use this deck name for additional context if relevant.` : '';
 
@@ -133,7 +133,7 @@ const getPromptText = (word, context = '', nativeLanguage = 'Russian', englishLe
  * @param {string} word - The word to create a card for
  * @param {string} context - Optional context for the word
  * @param {string} nativeLanguage - User's native language (defaults to 'Russian')
- * @param {string} englishLevel - User's English level (defaults to 'B2 preferably (maybe C1)')
+ * @param {string} englishLevel - User's English level (defaults to 'Upper intermediate')
  * @param {Object} pronunciationInfo - Optional pronunciation information
  * @param {string} deckName - The name of the deck
  * @returns {Promise} - The API response
@@ -142,7 +142,7 @@ export const generateAnkiCard = async (
   word,
   context = '',
   nativeLanguage = 'Russian',
-  englishLevel = 'B2 preferably (maybe C1)',
+  englishLevel = 'Upper intermediate',
   pronunciationInfo = null,
   deckName = ''
 ) => {

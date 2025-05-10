@@ -47,7 +47,7 @@ function App() {
   const [cardCreationSuccess, setCardCreationSuccess] = useState(null);
   const [enableTts, setEnableTts] = useState(getLocalStorageItem('enableTts') !== false);
   const [selectedLanguage, setSelectedLanguage] = useState(getLocalStorageItem('userNativeLanguage') || 'Russian');
-  const [selectedEnglishLevel, setSelectedEnglishLevel] = useState(getLocalStorageItem('userEnglishLevel') || 'B2 preferably (maybe C1)');
+  const [selectedEnglishLevel, setSelectedEnglishLevel] = useState(getLocalStorageItem('userEnglishLevel') || 'Upper intermediate');
   const [ttsResult, setTtsResult] = useState(null);
   const [modalContent, setModalContent] = useState(null);
   const [entryToDelete, setEntryToDelete] = useState(null);
